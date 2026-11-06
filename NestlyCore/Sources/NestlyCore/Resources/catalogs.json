@@ -1,0 +1,58 @@
+{
+  "vaccines": [
+    "Hepatitis B (HepB)",
+    "Rotavirus (RV)",
+    "Diphtheria, Tetanus, Pertussis (DTaP)",
+    "Haemophilus influenzae type b (Hib)",
+    "Pneumococcal (PCV)",
+    "Polio (IPV)",
+    "RSV (Nirsevimab)",
+    "Influenza (Flu)",
+    "COVID-19",
+    "Measles, Mumps, Rubella (MMR)",
+    "Varicella (VAR)",
+    "Hepatitis A (HepA)",
+    "Meningococcal (MenACWY)"
+  ],
+  "routines": [
+    "Bath",
+    "Tummy Time",
+    "Story Time",
+    "Massage",
+    "Outdoor Time",
+    "Play Time",
+    "Skin to Skin",
+    "Brush Teeth"
+  ],
+  "foods": [
+    "Apple",
+    "Avocado",
+    "Banana",
+    "Broccoli",
+    "Butternut Squash",
+    "Carrot",
+    "Chicken",
+    "Egg",
+    "Lentils",
+    "Mango",
+    "Oatmeal",
+    "Peanut Butter",
+    "Pear",
+    "Peas",
+    "Rice Cereal",
+    "Spinach",
+    "Sweet Potato",
+    "Yogurt"
+  ],
+  "medicationDoseUnits": ["mL", "mg", "drops", "tsp"],
+  "vitaminDDoseUnits": ["IU", "drops", "mL"],
+  "vitaminDDefault": { "dose": 400, "unit": "IU", "medicationName": "Vitamin D" },
+  "appointmentTitleHints": [
+    "Well-child checkup",
+    "Vaccination visit",
+    "Sick visit",
+    "Follow-up visit",
+    "Developmental check",
+    "Weight check"
+  ]
+}

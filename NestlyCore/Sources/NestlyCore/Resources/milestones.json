@@ -1,0 +1,453 @@
+{
+ "source": "CDC 'Learn the Signs. Act Early.' checklists. Keys are stable and stored in activity.milestone_key.",
+ "groups": [
+  {
+   "label": "2 months",
+   "ageMonths": 2,
+   "items": [
+    {
+     "key": "m2_1",
+     "title": "Calms down when spoken to or picked up"
+    },
+    {
+     "key": "m2_2",
+     "title": "Looks at your face"
+    },
+    {
+     "key": "m2_3",
+     "title": "Seems happy to see you when you walk up to them"
+    },
+    {
+     "key": "m2_4",
+     "title": "Smiles when you talk or smile at them"
+    },
+    {
+     "key": "m2_5",
+     "title": "Makes sounds other than crying"
+    },
+    {
+     "key": "m2_6",
+     "title": "Reacts to loud sounds"
+    },
+    {
+     "key": "m2_7",
+     "title": "Watches you as you move"
+    },
+    {
+     "key": "m2_8",
+     "title": "Looks at a toy for several seconds"
+    },
+    {
+     "key": "m2_9",
+     "title": "Holds head up when on tummy"
+    },
+    {
+     "key": "m2_10",
+     "title": "Moves both arms and both legs"
+    },
+    {
+     "key": "m2_11",
+     "title": "Opens hands briefly"
+    }
+   ]
+  },
+  {
+   "label": "4 months",
+   "ageMonths": 4,
+   "items": [
+    {
+     "key": "m4_1",
+     "title": "Smiles on their own to get your attention"
+    },
+    {
+     "key": "m4_2",
+     "title": "Chuckles (not yet a full laugh) when you try to make them laugh"
+    },
+    {
+     "key": "m4_3",
+     "title": "Looks at you, moves, or makes sounds to get or keep your attention"
+    },
+    {
+     "key": "m4_4",
+     "title": "Makes sounds like \"oooo\", \"aahh\" (cooing)"
+    },
+    {
+     "key": "m4_5",
+     "title": "Makes sounds back when you talk to them"
+    },
+    {
+     "key": "m4_6",
+     "title": "Turns head towards the sound of your voice"
+    },
+    {
+     "key": "m4_7",
+     "title": "If hungry, opens mouth when they see breast or bottle"
+    },
+    {
+     "key": "m4_8",
+     "title": "Looks at their hands with interest"
+    },
+    {
+     "key": "m4_9",
+     "title": "Holds head steady without support when you are holding them"
+    },
+    {
+     "key": "m4_10",
+     "title": "Holds a toy when you put it in their hand"
+    },
+    {
+     "key": "m4_11",
+     "title": "Uses their arm to swing at toys"
+    },
+    {
+     "key": "m4_12",
+     "title": "Brings hands to mouth"
+    },
+    {
+     "key": "m4_13",
+     "title": "Pushes up onto elbows/forearms when on tummy"
+    }
+   ]
+  },
+  {
+   "label": "6 months",
+   "ageMonths": 6,
+   "items": [
+    {
+     "key": "m6_1",
+     "title": "Knows familiar people"
+    },
+    {
+     "key": "m6_2",
+     "title": "Likes to look at themselves in a mirror"
+    },
+    {
+     "key": "m6_3",
+     "title": "Laughs"
+    },
+    {
+     "key": "m6_4",
+     "title": "Takes turns making sounds with you"
+    },
+    {
+     "key": "m6_5",
+     "title": "Blows \"raspberries\" (sticks tongue out and blows)"
+    },
+    {
+     "key": "m6_6",
+     "title": "Makes squealing noises"
+    },
+    {
+     "key": "m6_7",
+     "title": "Puts things in their mouth to explore them"
+    },
+    {
+     "key": "m6_8",
+     "title": "Reaches to grab a toy they want"
+    },
+    {
+     "key": "m6_9",
+     "title": "Closes lips to show they don't want more food"
+    },
+    {
+     "key": "m6_10",
+     "title": "Rolls from tummy to back"
+    },
+    {
+     "key": "m6_11",
+     "title": "Pushes up with straight arms when on tummy"
+    },
+    {
+     "key": "m6_12",
+     "title": "Leans on hands to support themselves when sitting"
+    }
+   ]
+  },
+  {
+   "label": "9 months",
+   "ageMonths": 9,
+   "items": [
+    {
+     "key": "m9_1",
+     "title": "Is shy, clingy, or fearful around strangers"
+    },
+    {
+     "key": "m9_2",
+     "title": "Shows several facial expressions, like happy, sad, angry, and surprised"
+    },
+    {
+     "key": "m9_3",
+     "title": "Looks when you call their name"
+    },
+    {
+     "key": "m9_4",
+     "title": "Reacts when you leave (looks, reaches for you, or cries)"
+    },
+    {
+     "key": "m9_5",
+     "title": "Smiles or laughs when you play peek-a-boo"
+    },
+    {
+     "key": "m9_6",
+     "title": "Makes a lot of different sounds like \"mamamama\" and \"babababa\""
+    },
+    {
+     "key": "m9_7",
+     "title": "Lifts arms up to be picked up"
+    },
+    {
+     "key": "m9_8",
+     "title": "Looks for objects when dropped out of sight"
+    },
+    {
+     "key": "m9_9",
+     "title": "Bangs two things together"
+    },
+    {
+     "key": "m9_10",
+     "title": "Gets to a sitting position by themselves"
+    },
+    {
+     "key": "m9_11",
+     "title": "Moves things from one hand to the other"
+    },
+    {
+     "key": "m9_12",
+     "title": "Uses fingers to \"rake\" food towards themselves"
+    },
+    {
+     "key": "m9_13",
+     "title": "Sits without support"
+    }
+   ]
+  },
+  {
+   "label": "12 months",
+   "ageMonths": 12,
+   "items": [
+    {
+     "key": "m12_1",
+     "title": "Plays games with you, like pat-a-cake"
+    },
+    {
+     "key": "m12_2",
+     "title": "Waves \"bye-bye\""
+    },
+    {
+     "key": "m12_3",
+     "title": "Calls a parent \"mama\" or \"dada\" or another special name"
+    },
+    {
+     "key": "m12_4",
+     "title": "Understands \"no\" (pauses briefly or stops when you say it)"
+    },
+    {
+     "key": "m12_5",
+     "title": "Puts something in a container, like a block in a cup"
+    },
+    {
+     "key": "m12_6",
+     "title": "Looks for things they see you hide"
+    },
+    {
+     "key": "m12_7",
+     "title": "Pulls up to stand"
+    },
+    {
+     "key": "m12_8",
+     "title": "Walks, holding on to furniture"
+    },
+    {
+     "key": "m12_9",
+     "title": "Drinks from a cup without a lid, as you hold it"
+    },
+    {
+     "key": "m12_10",
+     "title": "Picks things up between thumb and pointer finger"
+    }
+   ]
+  },
+  {
+   "label": "15 months",
+   "ageMonths": 15,
+   "items": [
+    {
+     "key": "m15_1",
+     "title": "Copies other children while playing"
+    },
+    {
+     "key": "m15_2",
+     "title": "Shows you an object they like"
+    },
+    {
+     "key": "m15_3",
+     "title": "Claps when excited"
+    },
+    {
+     "key": "m15_4",
+     "title": "Hugs stuffed doll or other toy"
+    },
+    {
+     "key": "m15_5",
+     "title": "Shows you affection (hugs, cuddles, or kisses you)"
+    },
+    {
+     "key": "m15_6",
+     "title": "Tries to say one or two words besides \"mama\" or \"dada\""
+    },
+    {
+     "key": "m15_7",
+     "title": "Looks at a familiar object when you name it"
+    },
+    {
+     "key": "m15_8",
+     "title": "Follows directions given with both a gesture and words"
+    },
+    {
+     "key": "m15_9",
+     "title": "Points to ask for something or to get help"
+    },
+    {
+     "key": "m15_10",
+     "title": "Tries to use things the right way, like a phone, cup, or book"
+    },
+    {
+     "key": "m15_11",
+     "title": "Stacks at least two small objects, like blocks"
+    },
+    {
+     "key": "m15_12",
+     "title": "Takes a few steps on their own"
+    },
+    {
+     "key": "m15_13",
+     "title": "Uses fingers to feed themselves some food"
+    }
+   ]
+  },
+  {
+   "label": "18 months",
+   "ageMonths": 18,
+   "items": [
+    {
+     "key": "m18_1",
+     "title": "Moves away from you, but looks to make sure you are close by"
+    },
+    {
+     "key": "m18_2",
+     "title": "Points to show you something interesting"
+    },
+    {
+     "key": "m18_3",
+     "title": "Puts hands out for you to wash them"
+    },
+    {
+     "key": "m18_4",
+     "title": "Looks at a few pages in a book with you"
+    },
+    {
+     "key": "m18_5",
+     "title": "Helps you dress them by pushing arm through sleeve or lifting up foot"
+    },
+    {
+     "key": "m18_6",
+     "title": "Tries to say three or more words besides \"mama\" or \"dada\""
+    },
+    {
+     "key": "m18_7",
+     "title": "Follows one-step directions without any gestures"
+    },
+    {
+     "key": "m18_8",
+     "title": "Copies you doing chores, like sweeping with a broom"
+    },
+    {
+     "key": "m18_9",
+     "title": "Plays with toys in a simple way, like pushing a toy car"
+    },
+    {
+     "key": "m18_10",
+     "title": "Walks without holding on to anyone or anything"
+    },
+    {
+     "key": "m18_11",
+     "title": "Scribbles"
+    },
+    {
+     "key": "m18_12",
+     "title": "Drinks from a cup without a lid and may spill sometimes"
+    },
+    {
+     "key": "m18_13",
+     "title": "Feeds themselves with their fingers"
+    },
+    {
+     "key": "m18_14",
+     "title": "Tries to use a spoon"
+    },
+    {
+     "key": "m18_15",
+     "title": "Climbs on and off a couch or chair without help"
+    }
+   ]
+  },
+  {
+   "label": "2 years",
+   "ageMonths": 24,
+   "items": [
+    {
+     "key": "m24_1",
+     "title": "Notices when others are hurt or upset"
+    },
+    {
+     "key": "m24_2",
+     "title": "Looks at your face to see how to react in a new situation"
+    },
+    {
+     "key": "m24_3",
+     "title": "Points to things in a book when you ask"
+    },
+    {
+     "key": "m24_4",
+     "title": "Says at least two words together, like \"More milk\""
+    },
+    {
+     "key": "m24_5",
+     "title": "Points to at least two body parts when you ask"
+    },
+    {
+     "key": "m24_6",
+     "title": "Uses more gestures than just waving and pointing"
+    },
+    {
+     "key": "m24_7",
+     "title": "Holds something in one hand while using the other hand"
+    },
+    {
+     "key": "m24_8",
+     "title": "Tries to use switches, knobs, or buttons on a toy"
+    },
+    {
+     "key": "m24_9",
+     "title": "Plays with more than one toy at the same time"
+    },
+    {
+     "key": "m24_10",
+     "title": "Kicks a ball"
+    },
+    {
+     "key": "m24_11",
+     "title": "Runs"
+    },
+    {
+     "key": "m24_12",
+     "title": "Walks (not climbs) up a few stairs with or without help"
+    },
+    {
+     "key": "m24_13",
+     "title": "Eats with a spoon"
+    }
+   ]
+  }
+ ]
+}

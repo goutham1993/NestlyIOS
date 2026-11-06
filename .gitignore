@@ -1,0 +1,24 @@
+# macOS
+.DS_Store
+
+# Build output
+.build/
+DerivedData/
+*.xcresult
+
+# Xcode per-user state
+xcuserdata/
+*.xcuserstate
+
+# Local tools (XcodeGen binary, template backup)
+.tools/
+
+# Personal-data test fixture (Nara sample export) — never commit
+NestlyCore/Tests/NestlyCoreTests/Fixtures/nara_export.csv
+**/nara_export.csv
+
+# Secrets
+*.p8
+*.p12
+*.mobileprovision
+.env

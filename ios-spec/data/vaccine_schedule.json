@@ -1,0 +1,58 @@
+{
+  "source": "CDC (US) recommended child immunization schedule, birth through 6 years. dueStartMonths/dueEndMonths are whole months since the ACTUAL birth date (never the adjusted one). vaccineName must match an entry in catalogs.json 'vaccines'.",
+  "groups": [
+    { "label": "Birth", "doses": [
+      { "key": "hepb1", "vaccineName": "Hepatitis B (HepB)", "doseNumber": 1, "dueStartMonths": 0, "dueEndMonths": 0 }
+    ]},
+    { "label": "1–2 months", "doses": [
+      { "key": "hepb2", "vaccineName": "Hepatitis B (HepB)", "doseNumber": 2, "dueStartMonths": 1, "dueEndMonths": 2 }
+    ]},
+    { "label": "2 months", "doses": [
+      { "key": "rv1", "vaccineName": "Rotavirus (RV)", "doseNumber": 1, "dueStartMonths": 2, "dueEndMonths": 2 },
+      { "key": "dtap1", "vaccineName": "Diphtheria, Tetanus, Pertussis (DTaP)", "doseNumber": 1, "dueStartMonths": 2, "dueEndMonths": 2 },
+      { "key": "hib1", "vaccineName": "Haemophilus influenzae type b (Hib)", "doseNumber": 1, "dueStartMonths": 2, "dueEndMonths": 2 },
+      { "key": "pcv1", "vaccineName": "Pneumococcal (PCV)", "doseNumber": 1, "dueStartMonths": 2, "dueEndMonths": 2 },
+      { "key": "ipv1", "vaccineName": "Polio (IPV)", "doseNumber": 1, "dueStartMonths": 2, "dueEndMonths": 2 }
+    ]},
+    { "label": "4 months", "doses": [
+      { "key": "rv2", "vaccineName": "Rotavirus (RV)", "doseNumber": 2, "dueStartMonths": 4, "dueEndMonths": 4 },
+      { "key": "dtap2", "vaccineName": "Diphtheria, Tetanus, Pertussis (DTaP)", "doseNumber": 2, "dueStartMonths": 4, "dueEndMonths": 4 },
+      { "key": "hib2", "vaccineName": "Haemophilus influenzae type b (Hib)", "doseNumber": 2, "dueStartMonths": 4, "dueEndMonths": 4 },
+      { "key": "pcv2", "vaccineName": "Pneumococcal (PCV)", "doseNumber": 2, "dueStartMonths": 4, "dueEndMonths": 4 },
+      { "key": "ipv2", "vaccineName": "Polio (IPV)", "doseNumber": 2, "dueStartMonths": 4, "dueEndMonths": 4 }
+    ]},
+    { "label": "6 months", "doses": [
+      { "key": "hepb3", "vaccineName": "Hepatitis B (HepB)", "doseNumber": 3, "dueStartMonths": 6, "dueEndMonths": 18 },
+      { "key": "rv3", "vaccineName": "Rotavirus (RV)", "doseNumber": 3, "dueStartMonths": 6, "dueEndMonths": 6, "brandDependent": true, "note": "Only for the 3-dose rotavirus brand" },
+      { "key": "dtap3", "vaccineName": "Diphtheria, Tetanus, Pertussis (DTaP)", "doseNumber": 3, "dueStartMonths": 6, "dueEndMonths": 6 },
+      { "key": "hib3", "vaccineName": "Haemophilus influenzae type b (Hib)", "doseNumber": 3, "dueStartMonths": 6, "dueEndMonths": 6, "brandDependent": true, "note": "Depends on the Hib brand used" },
+      { "key": "pcv3", "vaccineName": "Pneumococcal (PCV)", "doseNumber": 3, "dueStartMonths": 6, "dueEndMonths": 6 },
+      { "key": "ipv3", "vaccineName": "Polio (IPV)", "doseNumber": 3, "dueStartMonths": 6, "dueEndMonths": 18 }
+    ]},
+    { "label": "12 months", "doses": [
+      { "key": "hib4", "vaccineName": "Haemophilus influenzae type b (Hib)", "doseNumber": 4, "dueStartMonths": 12, "dueEndMonths": 15, "note": "Booster dose" },
+      { "key": "pcv4", "vaccineName": "Pneumococcal (PCV)", "doseNumber": 4, "dueStartMonths": 12, "dueEndMonths": 15 },
+      { "key": "mmr1", "vaccineName": "Measles, Mumps, Rubella (MMR)", "doseNumber": 1, "dueStartMonths": 12, "dueEndMonths": 15 },
+      { "key": "var1", "vaccineName": "Varicella (VAR)", "doseNumber": 1, "dueStartMonths": 12, "dueEndMonths": 15 },
+      { "key": "hepa1", "vaccineName": "Hepatitis A (HepA)", "doseNumber": 1, "dueStartMonths": 12, "dueEndMonths": 23 }
+    ]},
+    { "label": "15 months", "doses": [
+      { "key": "dtap4", "vaccineName": "Diphtheria, Tetanus, Pertussis (DTaP)", "doseNumber": 4, "dueStartMonths": 15, "dueEndMonths": 18 }
+    ]},
+    { "label": "18 months", "doses": [
+      { "key": "hepa2", "vaccineName": "Hepatitis A (HepA)", "doseNumber": 2, "dueStartMonths": 18, "dueEndMonths": 23, "note": "At least 6 months after dose 1" }
+    ]},
+    { "label": "4–6 years", "doses": [
+      { "key": "dtap5", "vaccineName": "Diphtheria, Tetanus, Pertussis (DTaP)", "doseNumber": 5, "dueStartMonths": 48, "dueEndMonths": 71 },
+      { "key": "ipv4", "vaccineName": "Polio (IPV)", "doseNumber": 4, "dueStartMonths": 48, "dueEndMonths": 71 },
+      { "key": "mmr2", "vaccineName": "Measles, Mumps, Rubella (MMR)", "doseNumber": 2, "dueStartMonths": 48, "dueEndMonths": 71 },
+      { "key": "var2", "vaccineName": "Varicella (VAR)", "doseNumber": 2, "dueStartMonths": 48, "dueEndMonths": 71 }
+    ]}
+  ],
+  "alsoRecommended": [
+    { "title": "Influenza (Flu)", "detail": "Every year from 6 months old, during flu season." },
+    { "title": "COVID-19", "detail": "From 6 months old; the number of doses depends on age and previous vaccination." },
+    { "title": "RSV (Nirsevimab)", "detail": "One dose for babies under 8 months during their first RSV season, if the mother wasn't vaccinated in pregnancy." },
+    { "title": "Rotavirus & Hib dose counts", "detail": "Some brands need one fewer dose. If the chart shows a 3rd rotavirus or 3rd/4th Hib dose you may not need it — check with your pediatrician." }
+  ]
+}

@@ -1,0 +1,702 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0C29E53D5C3FBAD50ABF944B /* AccountViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0ED8810DA0070FC668A7EFC /* AccountViews.swift */; };
+		0CD9B738492DF6DDE3F53803 /* NestlyCore in Frameworks */ = {isa = PBXBuildFile; productRef = F06BEE33363E28EFFA3FF305 /* NestlyCore */; };
+		1637382A8E0684FF79B64761 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04DEE89305CF7BF59E05F735 /* AppModel.swift */; };
+		16FDAC1266D98D4C76362018 /* NotesEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F6406506FAA06B5D9C940E7 /* NotesEditor.swift */; };
+		1DFF5D523C1F00F72ABB9DF5 /* NestlyWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = D0979600DBA2A0B91FC3B00E /* NestlyWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		251D92AAC04582589AFCA5F0 /* GrowthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6C2BEE9B7FC6F5DB0010256 /* GrowthView.swift */; };
+		2D07398879086FC669E3CB8A /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25FF7A1A5A9DFB8722914FA9 /* Components.swift */; };
+		3D13358629AB34DF364D98C6 /* AppIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE1B16096BDC451D780FBC75 /* AppIntents.swift */; };
+		3E693AF7F55657C3EE369189 /* NestlyCore in Frameworks */ = {isa = PBXBuildFile; productRef = 97F3BF1C643CDB55636AF0C7 /* NestlyCore */; };
+		4754F2346CBE19077E270D39 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79E73E3B21F20AC6E40D230D /* Theme.swift */; };
+		4BAED7E80965AAE3FFD2CE25 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DF559F5E798016925FCADF38 /* SwiftUI.framework */; };
+		538B4745F57ED4CB90C996F3 /* HealthViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FE240BC8BBDB063EAEFCE50 /* HealthViews.swift */; };
+		7169F0F518D012879DA7420E /* EntrySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62BD5489812A97643299A1BB /* EntrySheet.swift */; };
+		7F4D39964A82FBC0D5C1D384 /* SharedIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54DF874EE820B599405C7CC6 /* SharedIntents.swift */; };
+		8DA13745660AA265DDE641CF /* NestlyWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 068529D69C5333C19726B1CE /* NestlyWidgets.swift */; };
+		A11B3D8F760402DD43CAA0B6 /* FamilyStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8AC43F303FE143F4A43FA30 /* FamilyStore.swift */; };
+		A432AF3125F7BA4BD370C19A /* AppointmentsViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 706157B96DDA84072C7FD84E /* AppointmentsViews.swift */; };
+		AC5E6AAD7E6AF1A5C6081C4E /* SharedIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54DF874EE820B599405C7CC6 /* SharedIntents.swift */; };
+		B3BEE8CD46B9AB646C9CEBA2 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A22F3F5DECCB1DDDACDC4151 /* Assets.xcassets */; };
+		B950B4EB2D84C32061D1B768 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2E7E32ACC8EBBA97748AD757 /* WidgetKit.framework */; };
+		C316C9D2D7CE61AE7636DA52 /* NestlyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FF693723D320AC4FB70AC5A /* NestlyApp.swift */; };
+		C624D22769135EDB6264926A /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92FDD33BF49503FD318443A7 /* RootView.swift */; };
+		C6A9BC5F6DC4F9BFB671B03E /* TrendsViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82B9ED8B857E3D3C1512188B /* TrendsViews.swift */; };
+		CA5FD5F4540D95313A35749D /* HistoryTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7FCA95DED70CF5BD175E65C /* HistoryTab.swift */; };
+		D68CF891C5491BACB9230012 /* NetworkMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 998D37EE340ACCB7D7946A99 /* NetworkMonitor.swift */; };
+		EF96E3DEC253BEE91AAC8033 /* AuthViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E8DD1A9DEBD938F94BB5172 /* AuthViews.swift */; };
+		FB51C4C1D00A41958BB64A04 /* EntryController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 873116A9929A176D587D12FA /* EntryController.swift */; };
+		FEA01C0779AD0A9A8544EFCA /* ActivityTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = FECEB9E2EDCEDF9C1EC2F6AE /* ActivityTab.swift */; };
+		FF259DAB64D97219B66E0D1C /* NightstandView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E026CC86E9E56C18AF61B275 /* NightstandView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		89511A9BA92E6C7ABF5CFC4D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 5121269B51FF3AF8AB592A99 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 22F1825A24C238CF2DEFD7F9;
+			remoteInfo = NestlyWidgets;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		59854C7671D9419D893A792F /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				1DFF5D523C1F00F72ABB9DF5 /* NestlyWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		04DEE89305CF7BF59E05F735 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
+		068529D69C5333C19726B1CE /* NestlyWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NestlyWidgets.swift; sourceTree = "<group>"; };
+		19FEB4F34586D320FCD9464F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		25FF7A1A5A9DFB8722914FA9 /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
+		2E131EEF352B9C523239D108 /* NestlyIOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = NestlyIOS.entitlements; sourceTree = "<group>"; };
+		2E7E32ACC8EBBA97748AD757 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		2FF693723D320AC4FB70AC5A /* NestlyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NestlyApp.swift; sourceTree = "<group>"; };
+		54DF874EE820B599405C7CC6 /* SharedIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedIntents.swift; sourceTree = "<group>"; };
+		5FE240BC8BBDB063EAEFCE50 /* HealthViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthViews.swift; sourceTree = "<group>"; };
+		62BD5489812A97643299A1BB /* EntrySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntrySheet.swift; sourceTree = "<group>"; };
+		6F6406506FAA06B5D9C940E7 /* NotesEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesEditor.swift; sourceTree = "<group>"; };
+		706157B96DDA84072C7FD84E /* AppointmentsViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppointmentsViews.swift; sourceTree = "<group>"; };
+		79E73E3B21F20AC6E40D230D /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		82B9ED8B857E3D3C1512188B /* TrendsViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrendsViews.swift; sourceTree = "<group>"; };
+		873116A9929A176D587D12FA /* EntryController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryController.swift; sourceTree = "<group>"; };
+		8E8DD1A9DEBD938F94BB5172 /* AuthViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthViews.swift; sourceTree = "<group>"; };
+		92FDD33BF49503FD318443A7 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		998D37EE340ACCB7D7946A99 /* NetworkMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkMonitor.swift; sourceTree = "<group>"; };
+		A1BE6C89FB4ABF1EAF753E52 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		A22F3F5DECCB1DDDACDC4151 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		C0ED8810DA0070FC668A7EFC /* AccountViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountViews.swift; sourceTree = "<group>"; };
+		D0979600DBA2A0B91FC3B00E /* NestlyWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = NestlyWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		D7FCA95DED70CF5BD175E65C /* HistoryTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryTab.swift; sourceTree = "<group>"; };
+		DE1B16096BDC451D780FBC75 /* AppIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIntents.swift; sourceTree = "<group>"; };
+		DF559F5E798016925FCADF38 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		E026CC86E9E56C18AF61B275 /* NightstandView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NightstandView.swift; sourceTree = "<group>"; };
+		E2D1D83B75B0D341A7DDB65D /* NestlyWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = NestlyWidgets.entitlements; sourceTree = "<group>"; };
+		E8012F38558F9B870F011C93 /* NestlyIOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = NestlyIOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		ECB6801EDE21CE4B4687ECEA /* NestlyCore */ = {isa = PBXFileReference; lastKnownFileType = folder; name = NestlyCore; path = NestlyCore; sourceTree = SOURCE_ROOT; };
+		F6C2BEE9B7FC6F5DB0010256 /* GrowthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GrowthView.swift; sourceTree = "<group>"; };
+		F8AC43F303FE143F4A43FA30 /* FamilyStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FamilyStore.swift; sourceTree = "<group>"; };
+		FECEB9E2EDCEDF9C1EC2F6AE /* ActivityTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityTab.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		27255661FDBF4C9AB53C0A83 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0CD9B738492DF6DDE3F53803 /* NestlyCore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7E65A0CE7395FF30E2334DC8 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3E693AF7F55657C3EE369189 /* NestlyCore in Frameworks */,
+				B950B4EB2D84C32061D1B768 /* WidgetKit.framework in Frameworks */,
+				4BAED7E80965AAE3FFD2CE25 /* SwiftUI.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		0E8B725E9EC7166217F572C2 /* NestlyWidgets */ = {
+			isa = PBXGroup;
+			children = (
+				19FEB4F34586D320FCD9464F /* Info.plist */,
+				E2D1D83B75B0D341A7DDB65D /* NestlyWidgets.entitlements */,
+				068529D69C5333C19726B1CE /* NestlyWidgets.swift */,
+			);
+			path = NestlyWidgets;
+			sourceTree = "<group>";
+		};
+		19D6E6EAA250834B03592E0F /* History */ = {
+			isa = PBXGroup;
+			children = (
+				D7FCA95DED70CF5BD175E65C /* HistoryTab.swift */,
+			);
+			path = History;
+			sourceTree = "<group>";
+		};
+		1B7967C711C21B8EE704BC7C /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				54DF874EE820B599405C7CC6 /* SharedIntents.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		1B8E312F1D2FEFD29D428E10 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				DF559F5E798016925FCADF38 /* SwiftUI.framework */,
+				2E7E32ACC8EBBA97748AD757 /* WidgetKit.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		1BDC2122C786CE2A0D1EE217 /* Account */ = {
+			isa = PBXGroup;
+			children = (
+				C0ED8810DA0070FC668A7EFC /* AccountViews.swift */,
+			);
+			path = Account;
+			sourceTree = "<group>";
+		};
+		1CC779819530A8D5627C38AD /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				25FF7A1A5A9DFB8722914FA9 /* Components.swift */,
+				79E73E3B21F20AC6E40D230D /* Theme.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+		1D95B48264A2BD2FEBC60D6C = {
+			isa = PBXGroup;
+			children = (
+				FBBA884B9D0675882ADBAA36 /* NestlyIOS */,
+				0E8B725E9EC7166217F572C2 /* NestlyWidgets */,
+				AE4D3C5AB0B7419B499BACA1 /* Packages */,
+				1B7967C711C21B8EE704BC7C /* Shared */,
+				1B8E312F1D2FEFD29D428E10 /* Frameworks */,
+				21CF2063BE579AE12AF0E79E /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		21CF2063BE579AE12AF0E79E /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				E8012F38558F9B870F011C93 /* NestlyIOS.app */,
+				D0979600DBA2A0B91FC3B00E /* NestlyWidgets.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		4E7D24795BFB0C4284AE4906 /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				1BDC2122C786CE2A0D1EE217 /* Account */,
+				7DE3FF056A77C00894B07E6F /* Activity */,
+				86255CC37624BB7658F4BBC2 /* Appointments */,
+				ED527DF6520FAC21347E4F6B /* Auth */,
+				88B013971010ADC7A4BA77C6 /* Entry */,
+				F2D736A009B017FC3D733A97 /* Health */,
+				19D6E6EAA250834B03592E0F /* History */,
+				84C52826CE44B725F5F70978 /* Nightstand */,
+				6D512C611442F3656439C618 /* Trends */,
+			);
+			path = Features;
+			sourceTree = "<group>";
+		};
+		6D512C611442F3656439C618 /* Trends */ = {
+			isa = PBXGroup;
+			children = (
+				82B9ED8B857E3D3C1512188B /* TrendsViews.swift */,
+			);
+			path = Trends;
+			sourceTree = "<group>";
+		};
+		7DE3FF056A77C00894B07E6F /* Activity */ = {
+			isa = PBXGroup;
+			children = (
+				FECEB9E2EDCEDF9C1EC2F6AE /* ActivityTab.swift */,
+			);
+			path = Activity;
+			sourceTree = "<group>";
+		};
+		84C52826CE44B725F5F70978 /* Nightstand */ = {
+			isa = PBXGroup;
+			children = (
+				E026CC86E9E56C18AF61B275 /* NightstandView.swift */,
+			);
+			path = Nightstand;
+			sourceTree = "<group>";
+		};
+		86255CC37624BB7658F4BBC2 /* Appointments */ = {
+			isa = PBXGroup;
+			children = (
+				706157B96DDA84072C7FD84E /* AppointmentsViews.swift */,
+				6F6406506FAA06B5D9C940E7 /* NotesEditor.swift */,
+			);
+			path = Appointments;
+			sourceTree = "<group>";
+		};
+		88B013971010ADC7A4BA77C6 /* Entry */ = {
+			isa = PBXGroup;
+			children = (
+				873116A9929A176D587D12FA /* EntryController.swift */,
+				62BD5489812A97643299A1BB /* EntrySheet.swift */,
+			);
+			path = Entry;
+			sourceTree = "<group>";
+		};
+		9C32BB91E24185EAD974E558 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				DE1B16096BDC451D780FBC75 /* AppIntents.swift */,
+				04DEE89305CF7BF59E05F735 /* AppModel.swift */,
+				F8AC43F303FE143F4A43FA30 /* FamilyStore.swift */,
+				2FF693723D320AC4FB70AC5A /* NestlyApp.swift */,
+				998D37EE340ACCB7D7946A99 /* NetworkMonitor.swift */,
+				92FDD33BF49503FD318443A7 /* RootView.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		AE4D3C5AB0B7419B499BACA1 /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				ECB6801EDE21CE4B4687ECEA /* NestlyCore */,
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
+		ED527DF6520FAC21347E4F6B /* Auth */ = {
+			isa = PBXGroup;
+			children = (
+				8E8DD1A9DEBD938F94BB5172 /* AuthViews.swift */,
+			);
+			path = Auth;
+			sourceTree = "<group>";
+		};
+		F2D736A009B017FC3D733A97 /* Health */ = {
+			isa = PBXGroup;
+			children = (
+				F6C2BEE9B7FC6F5DB0010256 /* GrowthView.swift */,
+				5FE240BC8BBDB063EAEFCE50 /* HealthViews.swift */,
+			);
+			path = Health;
+			sourceTree = "<group>";
+		};
+		FBBA884B9D0675882ADBAA36 /* NestlyIOS */ = {
+			isa = PBXGroup;
+			children = (
+				A22F3F5DECCB1DDDACDC4151 /* Assets.xcassets */,
+				A1BE6C89FB4ABF1EAF753E52 /* Info.plist */,
+				2E131EEF352B9C523239D108 /* NestlyIOS.entitlements */,
+				9C32BB91E24185EAD974E558 /* App */,
+				1CC779819530A8D5627C38AD /* Components */,
+				4E7D24795BFB0C4284AE4906 /* Features */,
+			);
+			path = NestlyIOS;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		22F1825A24C238CF2DEFD7F9 /* NestlyWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F6716EDB0CA648A1416A4F11 /* Build configuration list for PBXNativeTarget "NestlyWidgets" */;
+			buildPhases = (
+				4D02BB85730ACC15F084EDA9 /* Sources */,
+				7E65A0CE7395FF30E2334DC8 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = NestlyWidgets;
+			packageProductDependencies = (
+				97F3BF1C643CDB55636AF0C7 /* NestlyCore */,
+			);
+			productName = NestlyWidgets;
+			productReference = D0979600DBA2A0B91FC3B00E /* NestlyWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		BD9B19C652DD02007F9EF241 /* NestlyIOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D9FD86ABBF42A579CB451B49 /* Build configuration list for PBXNativeTarget "NestlyIOS" */;
+			buildPhases = (
+				3B1AB2D40910BF20EC37600C /* Sources */,
+				F663C91033EF502CD7D51461 /* Resources */,
+				27255661FDBF4C9AB53C0A83 /* Frameworks */,
+				59854C7671D9419D893A792F /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				822A75BF14C3865B20A448A1 /* PBXTargetDependency */,
+			);
+			name = NestlyIOS;
+			packageProductDependencies = (
+				F06BEE33363E28EFFA3FF305 /* NestlyCore */,
+			);
+			productName = NestlyIOS;
+			productReference = E8012F38558F9B870F011C93 /* NestlyIOS.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		5121269B51FF3AF8AB592A99 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					22F1825A24C238CF2DEFD7F9 = {
+						DevelopmentTeam = 3TN6G8DQVM;
+						ProvisioningStyle = Automatic;
+					};
+					BD9B19C652DD02007F9EF241 = {
+						DevelopmentTeam = 3TN6G8DQVM;
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 639BD392A6BEF83CB12A9E9F /* Build configuration list for PBXProject "NestlyIOS" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 1D95B48264A2BD2FEBC60D6C;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				14ACAFBD5999E98910FB3E90 /* XCLocalSwiftPackageReference "NestlyCore" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 21CF2063BE579AE12AF0E79E /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				BD9B19C652DD02007F9EF241 /* NestlyIOS */,
+				22F1825A24C238CF2DEFD7F9 /* NestlyWidgets */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		F663C91033EF502CD7D51461 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B3BEE8CD46B9AB646C9CEBA2 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		3B1AB2D40910BF20EC37600C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0C29E53D5C3FBAD50ABF944B /* AccountViews.swift in Sources */,
+				FEA01C0779AD0A9A8544EFCA /* ActivityTab.swift in Sources */,
+				3D13358629AB34DF364D98C6 /* AppIntents.swift in Sources */,
+				1637382A8E0684FF79B64761 /* AppModel.swift in Sources */,
+				A432AF3125F7BA4BD370C19A /* AppointmentsViews.swift in Sources */,
+				EF96E3DEC253BEE91AAC8033 /* AuthViews.swift in Sources */,
+				2D07398879086FC669E3CB8A /* Components.swift in Sources */,
+				FB51C4C1D00A41958BB64A04 /* EntryController.swift in Sources */,
+				7169F0F518D012879DA7420E /* EntrySheet.swift in Sources */,
+				A11B3D8F760402DD43CAA0B6 /* FamilyStore.swift in Sources */,
+				251D92AAC04582589AFCA5F0 /* GrowthView.swift in Sources */,
+				538B4745F57ED4CB90C996F3 /* HealthViews.swift in Sources */,
+				CA5FD5F4540D95313A35749D /* HistoryTab.swift in Sources */,
+				C316C9D2D7CE61AE7636DA52 /* NestlyApp.swift in Sources */,
+				D68CF891C5491BACB9230012 /* NetworkMonitor.swift in Sources */,
+				FF259DAB64D97219B66E0D1C /* NightstandView.swift in Sources */,
+				16FDAC1266D98D4C76362018 /* NotesEditor.swift in Sources */,
+				C624D22769135EDB6264926A /* RootView.swift in Sources */,
+				7F4D39964A82FBC0D5C1D384 /* SharedIntents.swift in Sources */,
+				4754F2346CBE19077E270D39 /* Theme.swift in Sources */,
+				C6A9BC5F6DC4F9BFB671B03E /* TrendsViews.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4D02BB85730ACC15F084EDA9 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8DA13745660AA265DDE641CF /* NestlyWidgets.swift in Sources */,
+				AC5E6AAD7E6AF1A5C6081C4E /* SharedIntents.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		822A75BF14C3865B20A448A1 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 22F1825A24C238CF2DEFD7F9 /* NestlyWidgets */;
+			targetProxy = 89511A9BA92E6C7ABF5CFC4D /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		09BE2E5A5C932DC06B7B86CF /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = NestlyIOS/NestlyIOS.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				ENABLE_PREVIEWS = YES;
+				INFOPLIST_FILE = NestlyIOS/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = Baby.NestlyIOS;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		80F95DCF348BEE315BF2C4F6 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = NestlyWidgets/NestlyWidgets.entitlements;
+				INFOPLIST_FILE = NestlyWidgets/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = Baby.NestlyIOS.Widgets;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		811E0629C8B14792FF244298 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = NestlyIOS/NestlyIOS.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				ENABLE_PREVIEWS = YES;
+				INFOPLIST_FILE = NestlyIOS/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = Baby.NestlyIOS;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		9F01D05D19DC405D7001BC16 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 3TN6G8DQVM;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		A7E0AD7730416EF8AC70FAC5 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 3TN6G8DQVM;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		D594380F6D003BD399CFA56E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = NestlyWidgets/NestlyWidgets.entitlements;
+				INFOPLIST_FILE = NestlyWidgets/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = Baby.NestlyIOS.Widgets;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		639BD392A6BEF83CB12A9E9F /* Build configuration list for PBXProject "NestlyIOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9F01D05D19DC405D7001BC16 /* Debug */,
+				A7E0AD7730416EF8AC70FAC5 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		D9FD86ABBF42A579CB451B49 /* Build configuration list for PBXNativeTarget "NestlyIOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				811E0629C8B14792FF244298 /* Debug */,
+				09BE2E5A5C932DC06B7B86CF /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		F6716EDB0CA648A1416A4F11 /* Build configuration list for PBXNativeTarget "NestlyWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				80F95DCF348BEE315BF2C4F6 /* Debug */,
+				D594380F6D003BD399CFA56E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		14ACAFBD5999E98910FB3E90 /* XCLocalSwiftPackageReference "NestlyCore" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = NestlyCore;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		97F3BF1C643CDB55636AF0C7 /* NestlyCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = NestlyCore;
+		};
+		F06BEE33363E28EFFA3FF305 /* NestlyCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = NestlyCore;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 5121269B51FF3AF8AB592A99 /* Project object */;
+}
