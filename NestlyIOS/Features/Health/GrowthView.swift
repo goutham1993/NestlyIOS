@@ -33,26 +33,42 @@ struct GrowthView: View {
             .pickerStyle(.segmented)
             .listRowBackground(Color.clear)
             if entries == nil {
-                Text("Loading…").foregroundStyle(.secondary)
+                HStack(spacing: Space.m) { ProgressView(); Text("Loading…").foregroundStyle(.secondary) }
             } else if points.isEmpty {
-                Text("No \(metric.label.lowercased()) measurements yet.").foregroundStyle(.secondary)
-                Button("Log growth") { app.openEntry(.new(kind: .GROWTH)) }
+                EmptyStateView(
+                    icon: metric.icon,
+                    tint: tint,
+                    title: "No \(metric.label.lowercased()) yet",
+                    message: "Log a measurement to see how \(profile?.name ?? "your child") is growing."
+                ) {
+                    Button { app.openEntry(.new(kind: .GROWTH)) } label: { Label("Log Growth", systemImage: "plus") }
+                        .buttonStyle(.secondary)
+                }
+                .listRowBackground(Color.clear)
             } else if showList {
                 ForEach(points.reversed()) { point in
                     Button { app.openEntry(.edit(activityId: point.entry.id)) } label: { listRow(point, profile) }
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(Color.primary)
                 }
             } else if let profile, let birth = profile.adjustedBirthDate ?? profile.birthDate {
-                chart(points, profile: profile, birth: birth).frame(height: 360)
+                chart(points, profile: profile, birth: birth)
+                    .frame(height: 360)
+                    .padding(.vertical, Space.s)
                 if let point = selectedPoint { pointCard(point, profile, birth) }
             } else {
                 Text("Add \(profile?.name ?? "your child")'s birth date to see the growth chart.").foregroundStyle(.secondary)
             }
         }
         .navigationTitle("Growth")
+        .animation(.snappy, value: selectedPoint)
+        .animation(.snappy, value: showList)
+        .sensoryFeedback(.selection, trigger: selectedPoint)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button(showList ? "Show chart" : "Show list") { showList.toggle() }
+                Button { showList.toggle() } label: {
+                    Image(systemName: showList ? "chart.xyaxis.line" : "list.bullet")
+                }
+                .accessibilityLabel(showList ? "Show chart" : "Show list")
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Button { app.openEntry(.new(kind: .GROWTH)) } label: { Image(systemName: "plus") }.accessibilityLabel("Log growth")
@@ -100,20 +116,30 @@ struct GrowthView: View {
         }
     }
 
+    private var tint: Color { CardKind.GROWTH.color }
+
+    private func percentileText(_ pct: Double) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .ordinal
+        return "\(formatter.string(from: NSNumber(value: Int(pct.rounded()))) ?? "\(Int(pct.rounded()))") percentile"
+    }
+
     private func listRow(_ point: GrowthPoint, _ profile: ProfileEntity?) -> some View {
         let birth = profile?.adjustedBirthDate ?? profile?.birthDate
-        return VStack(alignment: .leading, spacing: 3) {
-            HStack {
+        return HStack(spacing: Space.m) {
+            IconTile(icon: metric.icon, tint: tint, size: 36)
+            VStack(alignment: .leading, spacing: 2) {
                 Text(Format.date(point.date))
-                Spacer()
-                Text(formatted(point.value)).font(.headline)
+                let details = [
+                    birth.map { "Age \(GrowthPercentiles.ageLabel($0, point.date))" },
+                    point.percentile.flatMap { pct in sexLabel(profile?.sex).map { _ in percentileText(pct) } },
+                ].compactMap { $0 }
+                if !details.isEmpty {
+                    Text(details.joined(separator: " · ")).font(.footnote).foregroundStyle(.secondary)
+                }
             }
-            if let pct = point.percentile, let label = sexLabel(profile?.sex) {
-                Text("\(label) Percentile \(Int(pct.rounded()))%").font(.caption).foregroundStyle(.secondary)
-            }
-            if let birth {
-                Text("Age \(GrowthPercentiles.ageLabel(birth, point.date))").font(.caption).foregroundStyle(.secondary)
-            }
+            Spacer()
+            Text(formatted(point.value)).font(.rounded(.headline)).monospacedDigit()
         }
     }
 
@@ -128,16 +154,32 @@ struct GrowthView: View {
                     ForEach(Array(stride(from: 0.0, through: xMax, by: 0.5)), id: \.self) { month in
                         if let v = GrowthPercentiles.valueAtPercentile(metric, profile.sex, month, pct) {
                             LineMark(x: .value("Age", month), y: .value("Value", display(v)), series: .value("Percentile", "\(Int(pct))%"))
-                                .foregroundStyle(pct == 50 ? Color.green.opacity(0.8) : Color.secondary.opacity(0.35))
-                                .lineStyle(StrokeStyle(lineWidth: pct == 50 ? 1.5 : 0.8))
+                                .foregroundStyle(pct == 50 ? tint.opacity(0.45) : Color(.tertiaryLabel).opacity(0.5))
+                                .lineStyle(StrokeStyle(lineWidth: pct == 50 ? 1.5 : 0.7, dash: pct == 50 ? [] : [2, 3]))
                         }
                     }
                 }
             }
-            ForEach(points.filter { ($0.ageMonths ?? -1) >= 0 }) { point in
+            let plotted = points.filter { ($0.ageMonths ?? -1) >= 0 }
+            ForEach(plotted) { point in
+                LineMark(x: .value("Age", point.ageMonths ?? 0), y: .value("Value", display(point.value)), series: .value("Percentile", "Child"))
+                    .foregroundStyle(tint)
+                    .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
                 PointMark(x: .value("Age", point.ageMonths ?? 0), y: .value("Value", display(point.value)))
-                    .foregroundStyle(CardKind.GROWTH.color)
-                    .symbolSize(selectedPoint == point ? 140 : 60)
+                    .foregroundStyle(tint)
+                    .symbolSize(selectedPoint == point ? 160 : 50)
+            }
+        }
+        .chartXAxis {
+            AxisMarks { _ in
+                AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [2, 3]))
+                AxisValueLabel()
+            }
+        }
+        .chartYAxis {
+            AxisMarks(position: .leading) { _ in
+                AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [2, 3]))
+                AxisValueLabel()
             }
         }
         .chartXScale(domain: 0 ... xMax)
@@ -157,19 +199,33 @@ struct GrowthView: View {
     }
 
     private func pointCard(_ point: GrowthPoint, _ profile: ProfileEntity, _ birth: LocalDate) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("\(metric.label) \(formatted(point.value))").font(.headline)
-            if let pct = point.percentile, let label = sexLabel(profile.sex) {
-                Text("\(label) Percentile \(Int(pct.rounded()))%")
-            }
-            Text("Age \(GrowthPercentiles.ageLabel(birth, point.date))").foregroundStyle(.secondary)
-            HStack {
-                Button("Edit") { app.openEntry(.edit(activityId: point.entry.id)) }
+        VStack(alignment: .leading, spacing: Space.m) {
+            HStack(alignment: .top, spacing: Space.m) {
+                IconTile(icon: metric.icon, tint: tint, size: 40)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(formatted(point.value)).font(.rounded(.title2, weight: .bold)).monospacedDigit()
+                    Text("\(metric.label) at \(GrowthPercentiles.ageLabel(birth, point.date))").font(.subheadline).foregroundStyle(.secondary)
+                }
                 Spacer()
-                Button("Dismiss") { selectedPoint = nil }
+                Button { selectedPoint = nil } label: {
+                    Image(systemName: "xmark").font(.caption.weight(.bold)).foregroundStyle(.secondary)
+                        .frame(width: 28, height: 28)
+                        .background(Color(.tertiarySystemFill), in: Circle())
+                }
+                .buttonStyle(.borderless)
+                .accessibilityLabel("Dismiss")
             }
-            .buttonStyle(.borderless)
-            Text("Source: WHO").font(.caption2).foregroundStyle(.secondary)
+            if let pct = point.percentile, let label = sexLabel(profile.sex) {
+                StatusPill(text: "\(percentileText(pct)) · \(label)", tint: tint)
+            }
+            HStack {
+                Button { app.openEntry(.edit(activityId: point.entry.id)) } label: { Label("Edit", systemImage: "pencil") }
+                    .buttonStyle(.borderless)
+                    .font(.subheadline.weight(.semibold))
+                Spacer()
+                Text("Source: WHO").font(.caption).foregroundStyle(.secondary)
+            }
         }
+        .padding(.vertical, Space.xs)
     }
 }

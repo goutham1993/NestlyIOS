@@ -6,24 +6,54 @@ import UniformTypeIdentifiers
 
 struct AccountTab: View {
     @Environment(AppModel.self) private var app
+    @Environment(FamilyStore.self) private var family
 
     var body: some View {
         List {
             Section {
-                NavigationLink(value: Route.family) { Label("Family", systemImage: "person.2") }
-                NavigationLink(value: Route.settings) { Label("Settings", systemImage: "gearshape") }
-                NavigationLink(value: Route.subscription) { Label("Subscription", systemImage: "star") }
-                NavigationLink(value: Route.help) { Label("Help", systemImage: "questionmark.circle") }
+                NavigationLink(value: Route.family) { familyHeader }
+            }
+            Section {
+                link("Settings", .system("gearshape.fill"), .settings)
+                link("Subscription", .system("star.fill"), .subscription)
+                link("Help", .system("questionmark.circle.fill"), .help)
             }
             Section("Data") {
-                NavigationLink(value: Route.importExport) { Label("Import / Export CSV", systemImage: "arrow.up.arrow.down.circle") }
+                link("Import / Export CSV", .system("arrow.up.arrow.down"), .importExport)
             }
             Section("Share & Social") {
-                Button {} label: { Label("Share Nestly With Friends", systemImage: "square.and.arrow.up") }
-                Button {} label: { Label("Rate Nestly", systemImage: "hand.thumbsup") }
+                Button {} label: { IconRow(title: "Share Nestly with Friends", icon: .system("square.and.arrow.up.fill"), chevron: false) }
+                Button {} label: { IconRow(title: "Rate Nestly", icon: .system("hand.thumbsup.fill"), chevron: false) }
             }
         }
         .navigationTitle("Account")
+    }
+
+    private var familyHeader: some View {
+        let profiles = family.profiles ?? []
+        let caregivers = family.caregivers.count
+        return HStack(spacing: Space.m) {
+            HStack(spacing: -10) {
+                ForEach(profiles.prefix(3)) { child in
+                    ChildAvatar(name: child.name, size: 48)
+                        .overlay(Circle().stroke(Color(.secondarySystemGroupedBackground), lineWidth: 2))
+                }
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(profiles.isEmpty ? "Family" : ListFormatter.localizedString(byJoining: profiles.map(\.name)))
+                    .font(.rounded(.headline))
+                    .lineLimit(1)
+                Text(caregivers == 1 ? "1 caregiver" : "\(caregivers) caregivers")
+                    .font(.subheadline).foregroundStyle(.secondary)
+            }
+        }
+        .padding(.vertical, Space.xs)
+        .accessibilityElement(children: .combine)
+        .accessibilityHint("Manage children, caregivers and invites")
+    }
+
+    private func link(_ title: String, _ icon: NestlyIcon, _ route: Route) -> some View {
+        NavigationLink(value: route) { IconRow(title: title, icon: icon, chevron: false) }
     }
 }
 
@@ -46,20 +76,25 @@ struct FamilyView: View {
             Section("Children") {
                 ForEach(profiles) { child in
                     Button { editingChild = child } label: {
-                        HStack {
+                        HStack(spacing: Space.m) {
+                            ChildAvatar(name: child.name, size: 40)
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(child.name).foregroundStyle(.primary)
-                                Text("Tap to edit").font(.caption).foregroundStyle(.secondary)
+                                Text(child.name).foregroundStyle(Color.primary)
+                                if let birth = child.birthDate, let age = Format.age(birth) {
+                                    Text(age).font(.subheadline).foregroundStyle(.secondary)
+                                }
                             }
                             Spacer()
-                            if let birth = child.birthDate, let age = Format.age(birth) { Text(age).foregroundStyle(.secondary) }
                             if child.id == family.selectedProfile?.id {
-                                Image(systemName: "checkmark").foregroundStyle(.tint)
+                                Image(systemName: "checkmark").font(.body.weight(.semibold)).foregroundStyle(Palette.accent)
+                                    .accessibilityLabel("Selected")
                             }
                         }
+                        .foregroundStyle(Color.primary)
                     }
+                    .accessibilityHint("Edit child")
                 }
-                Button("Add child") { addingChild = true }
+                Button { addingChild = true } label: { Label("Add Child", systemImage: "plus") }
             }
             Section("Caregivers") {
                 ForEach(family.caregivers) { caregiver in
@@ -67,30 +102,51 @@ struct FamilyView: View {
                     Button {
                         if !isMe { app.repos.family.setCurrentCaregiver(caregiver.id) }
                     } label: {
-                        HStack {
-                            Text(caregiver.name).foregroundStyle(.primary)
+                        HStack(spacing: Space.m) {
+                            IconTile(icon: .family, tint: isMe ? Palette.accent : .secondary, size: 32)
+                            Text(caregiver.name).foregroundStyle(Color.primary)
                             Spacer()
-                            Text(isMe ? "Your Profile" : "Tap if this is you").font(.caption).foregroundStyle(.secondary)
+                            if isMe {
+                                StatusPill(text: "You", tint: Palette.accent)
+                            } else {
+                                Text("Tap if this is you").font(.footnote).foregroundStyle(.secondary)
+                            }
                         }
+                        .foregroundStyle(Color.primary)
                     }
                 }
-                Button("Add caregiver") { caregiverName = ""; addingCaregiver = true }
+                Button { caregiverName = ""; addingCaregiver = true } label: { Label("Add Caregiver", systemImage: "plus") }
             }
-            Section("Invite") {
-                Button(working ? "Creating…" : "Create invite code") { Task { await createInvite() } }
-                    .disabled(working || family.currentFamilyId == nil)
-                if let invite {
-                    Text("Code: \(invite) — share it with another caregiver").textSelection(.enabled)
-                    HStack {
-                        Button("Copy") { UIPasteboard.general.string = invite }
-                        Spacer()
-                        ShareLink("Share", item: "Join our family on Nestly with invite code \(invite)")
-                    }
-                    .buttonStyle(.borderless)
+            Section {
+                Button { Task { await createInvite() } } label: {
+                    Label(working ? "Creating…" : "Create Invite Code", systemImage: "envelope.badge.person.crop")
                 }
+                .disabled(working || family.currentFamilyId == nil)
+                if let invite {
+                    VStack(alignment: .leading, spacing: Space.s) {
+                        Text(invite)
+                            .font(.rounded(.title2, weight: .bold))
+                            .monospaced()
+                            .textSelection(.enabled)
+                        Text("Share this code with another caregiver.").font(.footnote).foregroundStyle(.secondary)
+                        HStack(spacing: Space.m) {
+                            Button { UIPasteboard.general.string = invite; Haptics.success() } label: {
+                                Label("Copy", systemImage: "doc.on.doc")
+                            }
+                            ShareLink(item: "Join our family on Nestly with invite code \(invite)") {
+                                Label("Share", systemImage: "square.and.arrow.up")
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        .padding(.top, Space.xs)
+                    }
+                    .padding(.vertical, Space.xs)
+                }
+            } header: {
+                Text("Invite")
             }
             if let message {
-                Section { Text(message).foregroundStyle(.red) }
+                Section { Text(message).foregroundStyle(Palette.critical) }
             }
         }
         .navigationTitle("Family")
@@ -156,27 +212,33 @@ struct SettingsView: View {
     var body: some View {
         List {
             Section {
-                NavigationLink("Email & password", value: Route.email)
-                NavigationLink("Units", value: Route.units)
-                NavigationLink("Communication preferences", value: Route.communication)
-                Button("Nightstand Mode") { app.showNightstand = true }
+                NavigationLink(value: Route.email) { IconRow(title: "Email & Password", icon: .system("envelope.fill"), chevron: false) }
+                NavigationLink(value: Route.units) { IconRow(title: "Units", icon: .system("ruler.fill"), chevron: false) }
+                NavigationLink(value: Route.communication) { IconRow(title: "Communication", icon: .system("bell.fill"), chevron: false) }
+                Button { app.showNightstand = true } label: {
+                    IconRow(title: "Nightstand Mode", icon: .system("moon.fill"), tint: Palette.sleep)
+                }
             }
             Section {
                 Button {
                     defaultText = prefs.defaultBottleMl.map { Format.number(Units.mlToDisplay($0, prefs.units.volume), maxDecimals: 1) } ?? ""
                     editingDefault = true
                 } label: {
-                    HStack {
-                        Text("Default bottle amount").foregroundStyle(.primary)
-                        Spacer()
-                        Text(prefs.defaultBottleMl.map { Format.volume($0, prefs.units) } ?? "Off").foregroundStyle(.secondary)
-                    }
+                    IconRow(
+                        title: "Default Bottle Amount",
+                        icon: .bottle,
+                        tint: Palette.feed,
+                        value: prefs.defaultBottleMl.map { Format.volume($0, prefs.units) } ?? "Off",
+                        chevron: false
+                    )
                 }
             } footer: {
-                Text("Used by the widget, Siri and the Nightstand LOG FEED button.")
+                Text("Used by the widget, Siri and the Nightstand Log Feed button.")
             }
             Section {
-                Button("Log Out", role: .destructive) { Task { await app.signOut() } }
+                Button(role: .destructive) { Task { await app.signOut() } } label: {
+                    Text("Log Out").frame(maxWidth: .infinity)
+                }
             }
             #if DEBUG
             Section("Debug") {
@@ -284,9 +346,10 @@ struct CommunicationView: View {
 
     var body: some View {
         Form {
-            Toggle("Reminders", isOn: $reminders)
-            Toggle("Product updates", isOn: $updates)
+            Toggle(isOn: $reminders) { IconRow(title: "Reminders", icon: .reminder, chevron: false) }
+            Toggle(isOn: $updates) { IconRow(title: "Product Updates", icon: .system("sparkles"), chevron: false) }
         }
+        .tint(Palette.accent)
         .navigationTitle("Communication")
     }
 }
@@ -294,7 +357,9 @@ struct CommunicationView: View {
 struct SubscriptionView: View {
     var body: some View {
         Form {
-            Section("Current plan") { Text("Free") }
+            Section("Current Plan") {
+                IconRow(title: "Nestly Free", icon: .system("star.fill"), subtitle: "All tracking features included", chevron: false)
+            }
         }
         .navigationTitle("Subscription")
     }
@@ -309,15 +374,19 @@ struct HelpView: View {
     var body: some View {
         Form {
             Section {
-                Link("Contact help@nestly.app", destination: URL(string: "mailto:help@nestly.app")!)
-                Button("FAQs") {}
-                HStack {
-                    Text("Version")
-                    Spacer()
-                    Text(version).foregroundStyle(.secondary)
+                Link(destination: URL(string: "mailto:help@nestly.app")!) {
+                    IconRow(title: "Contact Support", icon: .system("envelope.fill"), subtitle: "help@nestly.app", chevron: false)
                 }
-                Button("Legal") {}
-                Button("Advanced Settings") {}
+                Button {} label: { IconRow(title: "FAQs", icon: .system("questionmark.bubble.fill")) }
+                Button {} label: { IconRow(title: "Legal", icon: .system("doc.text.fill")) }
+                Button {} label: { IconRow(title: "Advanced Settings", icon: .system("slider.horizontal.3")) }
+            }
+            Section {
+                IconRow(title: "Version", icon: .system("info.circle.fill"), tint: .secondary, value: version, chevron: false)
+            }
+            Section("Acknowledgements") {
+                Text("Activity icons from Material Symbols by Google, via Streamline. Licensed under the Apache License 2.0.")
+                    .font(.footnote).foregroundStyle(.secondary)
             }
         }
         .navigationTitle("Help")
@@ -356,16 +425,16 @@ struct ImportExportView: View {
     var body: some View {
         List {
             Section {
-                Button("Import from Nara") { importKind = .nara }
-                Button("Export Nestly CSV") { Task { await export() } }
-                Button("Import Nestly CSV") { importKind = .nestly }
+                Button { importKind = .nara } label: { IconRow(title: "Import from Nara", icon: .system("square.and.arrow.down.fill"), chevron: false) }
+                Button { Task { await export() } } label: { IconRow(title: "Export Nestly CSV", icon: .system("square.and.arrow.up.fill"), chevron: false) }
+                Button { importKind = .nestly } label: { IconRow(title: "Import Nestly CSV", icon: .system("tray.and.arrow.down.fill"), chevron: false) }
             }
             .disabled(busy)
             if busy || message != nil {
                 Section {
-                    HStack {
+                    HStack(spacing: Space.m) {
                         if busy { ProgressView() }
-                        Text(message ?? "Working…")
+                        Text(message ?? "Working…").font(.subheadline)
                     }
                 }
             }
@@ -373,14 +442,10 @@ struct ImportExportView: View {
                 if let counts {
                     if counts.isEmpty { Text("No activities yet.").foregroundStyle(.secondary) }
                     ForEach(ActivityType.allCases.filter { (counts[$0] ?? 0) > 0 }, id: \.self) { type in
-                        HStack {
-                            Text(type.displayName)
-                            Spacer()
-                            Text("\(counts[type] ?? 0)").foregroundStyle(.secondary)
-                        }
+                        IconRow(title: type.displayName, icon: type.icon, tint: type.color, value: "\(counts[type] ?? 0)", chevron: false)
                     }
                 } else {
-                    Text("Loading…").foregroundStyle(.secondary)
+                    HStack(spacing: Space.m) { ProgressView(); Text("Loading…").foregroundStyle(.secondary) }
                 }
             }
         }

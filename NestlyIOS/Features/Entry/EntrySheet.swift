@@ -25,21 +25,35 @@ struct EntrySheet: View {
                         HStack { Spacer(); ProgressView(); Spacer() }
                     } else {
                         EntryForm(c: c, now: now)
-                        Section {
-                            TextField("Notes", text: $c.draft.note, axis: .vertical).lineLimit(3 ... 8)
+                        Section("Notes") {
+                            TextField("Add a note", text: $c.draft.note, axis: .vertical).lineLimit(3 ... 8)
                         }
                         PhotoSection(path: $c.draft.photoPath)
                         if c.isEditing {
                             Section {
-                                Button("Delete", role: .destructive) { confirmDelete = true }
+                                Button(role: .destructive) {
+                                    Haptics.warning()
+                                    confirmDelete = true
+                                } label: {
+                                    Label("Delete Entry", systemImage: "trash").frame(maxWidth: .infinity)
+                                }
                             }
                         }
                     }
                     if let error = c.error {
-                        Section { Text(error).foregroundStyle(.red) }
+                        Section { Label(error, systemImage: "exclamationmark.triangle.fill").foregroundStyle(Palette.critical) }
                     }
                 }
+                .tint(c.kind.color)
                 .toolbar {
+                    ToolbarItem(placement: .principal) {
+                        HStack(spacing: Space.s) {
+                            IconTile(icon: c.kind.icon, tint: c.kind.color, size: 28)
+                            Text(c.kind.title).font(.rounded(.headline))
+                        }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityAddTraits(.isHeader)
+                    }
                     ToolbarItem(placement: .cancellationAction) {
                         Button("Close") {
                             if c.anyTimerActive { confirmDiscard = true } else { dismiss() }
@@ -47,6 +61,7 @@ struct EntrySheet: View {
                     }
                     ToolbarItem(placement: .confirmationAction) {
                         Button("Save") { save() }
+                            .fontWeight(.semibold)
                             .disabled(!c.canSave(now) || c.saving)
                     }
                 }
@@ -54,6 +69,7 @@ struct EntrySheet: View {
             .navigationTitle(c.kind.title)
             .navigationBarTitleDisplayMode(.inline)
         }
+        .presentationCornerRadius(Radius.l)
         .task { await c.load(profile: family.selectedProfile) }
         .onReceive(NotificationCenter.default.publisher(for: ActiveTimerStore.didChange)) { _ in c.refreshTimers() }
         .confirmationDialog("Delete this entry?", isPresented: $confirmDelete, titleVisibility: .visible) {
@@ -98,7 +114,10 @@ struct EntrySheet: View {
 
     private func save() {
         Task {
-            if await c.save(profile: family.selectedProfile, caregiverId: family.currentCaregiver?.id) { dismiss() }
+            if await c.save(profile: family.selectedProfile, caregiverId: family.currentCaregiver?.id) {
+                Haptics.success()
+                dismiss()
+            }
         }
     }
 }
@@ -164,7 +183,7 @@ struct EntryForm: View {
             Section {
                 StartRow(c: c, title: "Time")
                 DecimalField(title: "Dose", value: $c.draft.dose)
-                ChipFlow(items: Catalogs.vitaminDDoseUnits, label: { $0 }, isSelected: { c.draft.doseUnit == $0 }) { c.draft.doseUnit = $0 }
+                ChipFlow(items: Catalogs.vitaminDDoseUnits, label: { $0 }, isSelected: { c.draft.doseUnit == $0 }, tint: CardKind.HEALTH.color) { c.draft.doseUnit = $0 }
             }
         }
     }
@@ -208,11 +227,16 @@ struct BreastfeedFields: View {
 
     var body: some View {
         Section {
-            HStack(spacing: 16) {
+            HStack(spacing: Space.m) {
                 side(.BREAST_LEFT, "Left", d.leftSec, .LEFT)
                 side(.BREAST_RIGHT, "Right", d.rightSec, .RIGHT)
             }
-            .padding(.vertical, 6)
+            .padding(.vertical, Space.s)
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets())
+            .sensoryFeedback(.impact(weight: .light), trigger: c.timers.values.filter(\.isRunning).count)
+        }
+        Section {
             StartRow(c: c, shownMs: c.draft.startTimeSet ? nil : (d.leftSec + d.rightSec > 0 ? d.startTime : nil))
             LabeledContent("Total Time", value: Format.duration(d.leftSec + d.rightSec))
         }
@@ -223,25 +247,45 @@ struct BreastfeedFields: View {
 
     private func side(_ key: TimerKey, _ label: String, _ seconds: Int64, _ breast: BreastSide) -> some View {
         let running = c.usesTimers && c.timers[key]?.isRunning == true
-        return VStack(spacing: 6) {
+        let tint = CardKind.FEED.color
+        return VStack(spacing: Space.s) {
             Button {
-                if c.usesTimers { c.toggle(key) } else { editing = TimerKeyEdit(key: key, seconds: seconds) }
+                if c.usesTimers {
+                    withAnimation(.snappy) { c.toggle(key) }
+                } else {
+                    editing = TimerKeyEdit(key: key, seconds: seconds)
+                }
             } label: {
-                VStack(spacing: 4) {
-                    Text(label).font(.headline)
-                    Text(Format.stopwatch(seconds)).font(.title2.monospacedDigit())
+                VStack(spacing: Space.s) {
+                    Text(label).font(.rounded(.headline)).foregroundStyle(running ? .white : .primary)
+                    Text(Format.stopwatch(seconds))
+                        .font(.rounded(.title, weight: .bold))
+                        .monospacedDigit()
+                        .contentTransition(.numericText())
+                        .foregroundStyle(running ? .white : .primary)
                     if c.usesTimers {
-                        Image(systemName: running ? "pause.fill" : "play.fill").font(.caption)
+                        Image(systemName: running ? "pause.fill" : "play.fill")
+                            .font(.subheadline.weight(.bold))
+                            .foregroundStyle(running ? tint : .white)
+                            .frame(width: 36, height: 36)
+                            .background(running ? Color.white : tint, in: Circle())
+                            .contentTransition(.symbolEffect(.replace))
+                    } else {
+                        Text("Tap to set").font(.caption).foregroundStyle(.secondary)
                     }
                 }
-                .frame(maxWidth: .infinity, minHeight: 96)
-                .background(running ? CardKind.FEED.color.opacity(0.25) : Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: 16))
+                .frame(maxWidth: .infinity, minHeight: 148)
+                .background(running ? tint : Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: Radius.l, style: .continuous))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.pressable)
+            .accessibilityLabel("\(label) side, \(Format.duration(seconds))")
+            .accessibilityHint(c.usesTimers ? (running ? "Pauses the timer" : "Starts the timer") : "Edits the time")
             .contextMenu {
-                Button("Edit time") { editing = TimerKeyEdit(key: key, seconds: seconds) }
+                Button { editing = TimerKeyEdit(key: key, seconds: seconds) } label: { Label("Edit time", systemImage: "pencil") }
             }
-            Text(c.lastSide == breast ? "last side" : " ").font(.caption).foregroundStyle(.secondary)
+            StatusPill(text: "Last side", tint: tint)
+                .opacity(c.lastSide == breast ? 1 : 0)
+                .accessibilityHidden(c.lastSide != breast)
         }
     }
 }
@@ -253,10 +297,11 @@ struct BottleFields: View {
     var body: some View {
         let disabled = prefs.disabledToggles
         Section {
-            HStack {
-                if !disabled.contains(.BOTTLE_BREAST_MILK) || c.draft.milkType == .BREAST_MILK { milk(.BREAST_MILK, "Breast Milk") }
-                if !disabled.contains(.BOTTLE_FORMULA) || c.draft.milkType == .FORMULA { milk(.FORMULA, "Formula") }
+            HStack(spacing: Space.m) {
+                if !disabled.contains(.BOTTLE_BREAST_MILK) || c.draft.milkType == .BREAST_MILK { milk(.BREAST_MILK, "Breast Milk", .breastfeed) }
+                if !disabled.contains(.BOTTLE_FORMULA) || c.draft.milkType == .FORMULA { milk(.FORMULA, "Formula", .bottle) }
             }
+            .padding(.vertical, Space.xs)
             StartRow(c: c)
             UnitField(
                 title: "Amount", base: $c.draft.bottleMl,
@@ -266,9 +311,10 @@ struct BottleFields: View {
             )
             if c.draft.bottleMl == nil, let last = c.lastBottleMl {
                 HStack {
-                    Text("Use last amount: \(Format.volume(last, prefs.units))?")
+                    Text("Use last amount: \(Format.volume(last, prefs.units))?").foregroundStyle(.secondary)
                     Spacer()
-                    Button("Yes") { c.draft.bottleMl = last }
+                    Button("Use") { withAnimation(.snappy) { c.draft.bottleMl = last } }
+                        .buttonStyle(.bordered).buttonBorderShape(.capsule).controlSize(.small)
                 }
             }
             if c.draft.milkType == .FORMULA {
@@ -277,15 +323,11 @@ struct BottleFields: View {
         }
     }
 
-    private func milk(_ type: MilkType, _ label: String) -> some View {
+    private func milk(_ type: MilkType, _ label: String, _ icon: NestlyIcon) -> some View {
         let selected = c.draft.milkType == type
-        return Button {
-            c.draft.milkType = selected ? nil : type
-        } label: {
-            Text(label).frame(maxWidth: .infinity, minHeight: 44)
-                .background(selected ? CardKind.FEED.color.opacity(0.25) : Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: 12))
+        return SelectTile(title: label, icon: icon, selected: selected, tint: CardKind.FEED.color) {
+            withAnimation(.snappy) { c.draft.milkType = selected ? nil : type }
         }
-        .buttonStyle(.plain)
     }
 }
 
@@ -296,17 +338,17 @@ struct SolidsFields: View {
 
     var body: some View {
         Section {
-            ChipFlow(items: MealType.allCases, label: \.label, isSelected: { c.draft.mealType == $0 }) { meal in
+            ChipFlow(items: MealType.allCases, label: \.label, isSelected: { c.draft.mealType == $0 }, tint: CardKind.FEED.color) { meal in
                 c.draft.mealType = c.draft.mealType == meal ? nil : meal
             }
             StartRow(c: c)
         }
         Section("Food") {
             let custom = c.draft.foods.filter { !Catalogs.foods.contains($0) }
-            ChipFlow(items: Catalogs.foods + custom, label: { $0 }, isSelected: { c.draft.foods.contains($0) }) { food in
+            ChipFlow(items: Catalogs.foods + custom, label: { $0 }, isSelected: { c.draft.foods.contains($0) }, tint: CardKind.FEED.color) { food in
                 if let i = c.draft.foods.firstIndex(of: food) { c.draft.foods.remove(at: i) } else { c.draft.foods.append(food) }
             }
-            Button("+ Add your own") { adding = true }
+            Button { adding = true } label: { Label("Add your own", systemImage: "plus") }
         }
         .alert("Food", isPresented: $adding) {
             TextField("Food", text: $newFood)
@@ -333,22 +375,15 @@ struct PumpFields: View {
                 Text("Total").tag(PumpMode.TOTAL)
             }
             .pickerStyle(.segmented)
-            VStack(spacing: 10) {
-                Text(Format.stopwatch(d.pumpSec)).font(.system(size: 44, weight: .semibold).monospacedDigit())
-                if c.usesTimers {
-                    HStack {
-                        Button(t.isRunning ? "Pause Timer" : t.isIdle ? "Start Timer" : "Resume Timer") { c.toggle(.PUMP) }
-                            .buttonStyle(.borderedProminent)
-                        Button("Reset") { c.reset(.PUMP) }.buttonStyle(.bordered).disabled(t.isIdle)
-                    }
-                }
-            }
-            .frame(maxWidth: .infinity)
+            StopwatchHero(
+                seconds: d.pumpSec, tint: CardKind.PUMP.color, timer: c.usesTimers ? t : nil,
+                toggle: { c.toggle(.PUMP) }, reset: { c.reset(.PUMP) }
+            )
             StartRow(c: c, shownMs: !c.draft.startTimeSet && !t.isIdle ? d.startTime : nil)
             Button { editingTotal = true } label: {
                 LabeledContent("Total Time", value: d.pumpSec > 0 ? Format.duration(d.pumpSec) : "Add")
             }
-            .foregroundStyle(.primary)
+            .foregroundStyle(Color.primary)
         }
         Section {
             let volume = prefs.units.volume
@@ -372,24 +407,25 @@ struct DiaperFields: View {
 
     var body: some View {
         Section {
-            StartRow(c: c, title: "Time")
-            HStack {
-                toggle("Wet", c.draft.wet) { c.draft.wet.toggle(); if c.draft.wet { c.draft.dry = false } }
-                toggle("Dirty", c.draft.dirty) { c.draft.dirty.toggle(); if c.draft.dirty { c.draft.dry = false } }
-                toggle("Dry", c.draft.dry) {
+            HStack(spacing: Space.s) {
+                toggle("Wet", "drop.fill", c.draft.wet) { c.draft.wet.toggle(); if c.draft.wet { c.draft.dry = false } }
+                toggle("Dirty", "circle.fill", c.draft.dirty) { c.draft.dirty.toggle(); if c.draft.dirty { c.draft.dry = false } }
+                toggle("Dry", "sun.max.fill", c.draft.dry) {
                     c.draft.dry.toggle()
                     if c.draft.dry { c.draft.wet = false; c.draft.dirty = false }
                 }
             }
+            .padding(.vertical, Space.xs)
+            StartRow(c: c, title: "Time")
         }
         if c.draft.dirty {
             Section("Color") {
-                ChipFlow(items: StoolColor.allCases, label: \.label, isSelected: { c.draft.stoolColor == $0 }, swatch: \.swatch) { color in
+                ChipFlow(items: StoolColor.allCases, label: \.label, isSelected: { c.draft.stoolColor == $0 }, swatch: \.swatch, tint: CardKind.DIAPER.color) { color in
                     c.draft.stoolColor = c.draft.stoolColor == color ? nil : color
                 }
             }
             Section("Texture") {
-                ChipFlow(items: StoolTexture.allCases, label: \.label, isSelected: { c.draft.stoolTexture == $0 }) { texture in
+                ChipFlow(items: StoolTexture.allCases, label: \.label, isSelected: { c.draft.stoolTexture == $0 }, tint: CardKind.DIAPER.color) { texture in
                     c.draft.stoolTexture = c.draft.stoolTexture == texture ? nil : texture
                 }
             }
@@ -397,12 +433,10 @@ struct DiaperFields: View {
         Section { Toggle("Diaper Rash", isOn: $c.draft.rash) }
     }
 
-    private func toggle(_ label: String, _ on: Bool, _ action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(label).frame(maxWidth: .infinity, minHeight: 44)
-                .background(on ? CardKind.DIAPER.color.opacity(0.3) : Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: 12))
+    private func toggle(_ label: String, _ symbol: String, _ on: Bool, _ action: @escaping () -> Void) -> some View {
+        SelectTile(title: label, icon: .system(symbol), selected: on, tint: CardKind.DIAPER.color) {
+            withAnimation(.snappy) { action() }
         }
-        .buttonStyle(.plain)
     }
 }
 
@@ -415,20 +449,10 @@ struct SleepFields: View {
         let t = c.timers[.SLEEP] ?? TimerState()
         let total = d.endTime.map { max(0, ($0 - d.startTime) / 1000) } ?? 0
         Section {
-            VStack(spacing: 10) {
-                Text("Total Time").font(.caption).foregroundStyle(.secondary)
-                Text(Format.stopwatch(total)).font(.system(size: 44, weight: .semibold).monospacedDigit())
-                if c.usesTimers {
-                    HStack {
-                        Button(t.isRunning ? "Pause Timer" : t.isIdle ? "Start Timer" : "Resume Timer") { c.toggle(.SLEEP) }
-                            .buttonStyle(.borderedProminent)
-                        Button("Reset") { c.reset(.SLEEP) }.buttonStyle(.bordered).disabled(t.isIdle)
-                    }
-                } else {
-                    Button("Edit time") { editingTotal = true }.font(.footnote)
-                }
-            }
-            .frame(maxWidth: .infinity)
+            StopwatchHero(
+                seconds: total, tint: CardKind.SLEEP.color, label: "Total Time", timer: c.usesTimers ? t : nil,
+                toggle: { c.toggle(.SLEEP) }, reset: { c.reset(.SLEEP) }, edit: { editingTotal = true }
+            )
             StartRow(c: c, shownMs: !c.draft.startTimeSet && !t.isIdle ? d.startTime : nil)
             if c.usesTimers, !t.isIdle {
                 LabeledContent("End Time", value: Format.time(d.endTime ?? d.startTime))
@@ -462,7 +486,7 @@ struct RoutineFields: View {
         Section("Routine") {
             let current = c.draft.routineName
             let items = Catalogs.routines + (current.map { Catalogs.routines.contains($0) ? [] : [$0] } ?? [])
-            ChipFlow(items: items, label: { $0 }, isSelected: { current == $0 }) { c.draft.routineName = current == $0 ? nil : $0 }
+            ChipFlow(items: items, label: { $0 }, isSelected: { current == $0 }, tint: CardKind.ROUTINE.color) { c.draft.routineName = current == $0 ? nil : $0 }
             HStack {
                 TextField("Create your own", text: $custom)
                 Button("Add") {
@@ -493,7 +517,7 @@ struct MedicalFields: View {
         Section("Medication") {
             TextField("Name", text: Binding(get: { c.draft.medicationName ?? "" }, set: { c.draft.medicationName = $0.isEmpty ? nil : $0 }))
             DecimalField(title: "Dose", value: $c.draft.dose)
-            ChipFlow(items: Catalogs.medicationDoseUnits, label: { $0 }, isSelected: { c.draft.doseUnit == $0 }) { unit in
+            ChipFlow(items: Catalogs.medicationDoseUnits, label: { $0 }, isSelected: { c.draft.doseUnit == $0 }, tint: CardKind.HEALTH.color) { unit in
                 c.draft.doseUnit = c.draft.doseUnit == unit ? nil : unit
             }
         }
@@ -511,14 +535,73 @@ struct VaccineFields: View {
                 Button {
                     if let i = c.draft.vaccines.firstIndex(of: name) { c.draft.vaccines.remove(at: i) } else { c.draft.vaccines.append(name) }
                 } label: {
+                    let given = c.draft.vaccines.contains(name)
                     HStack {
-                        Text(name).foregroundStyle(.primary)
+                        Text(name).foregroundStyle(Color.primary)
                         Spacer()
-                        if c.draft.vaccines.contains(name) { Image(systemName: "checkmark").foregroundStyle(Color.accentColor) }
+                        Image(systemName: given ? "checkmark.circle.fill" : "circle")
+                            .font(.title3)
+                            .foregroundStyle(given ? CardKind.HEALTH.color : Color(.tertiaryLabel))
+                            .contentTransition(.symbolEffect(.replace))
                     }
+                    .sensoryFeedback(.selection, trigger: given)
+                    .accessibilityAddTraits(given ? .isSelected : [])
                 }
             }
         }
+    }
+}
+
+/// Big rounded stopwatch with circular start/pause and reset controls.
+struct StopwatchHero: View {
+    let seconds: Int64
+    let tint: Color
+    var label: String?
+    /// Nil when entering a past session by hand (no live timer).
+    let timer: TimerState?
+    let toggle: () -> Void
+    let reset: () -> Void
+    var edit: (() -> Void)?
+
+    var body: some View {
+        VStack(spacing: Space.m) {
+            if let label { Text(label).font(.caption.weight(.medium)).foregroundStyle(.secondary) }
+            Text(Format.stopwatch(seconds))
+                .font(.system(size: 52, weight: .bold, design: .rounded))
+                .monospacedDigit()
+                .contentTransition(.numericText())
+                .foregroundStyle(timer?.isRunning == true ? tint : .primary)
+                .accessibilityLabel(Format.duration(seconds))
+            if let timer {
+                HStack(spacing: Space.xl) {
+                    Button { withAnimation(.snappy) { reset() } } label: {
+                        Image(systemName: "arrow.counterclockwise")
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(timer.isIdle ? Color.secondary : Color.primary)
+                            .frame(width: 56, height: 56)
+                            .background(Color(.tertiarySystemFill), in: Circle())
+                    }
+                    .disabled(timer.isIdle)
+                    .accessibilityLabel("Reset")
+                    Button { withAnimation(.snappy) { toggle() } } label: {
+                        Image(systemName: timer.isRunning ? "pause.fill" : "play.fill")
+                            .font(.title.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 76, height: 76)
+                            .background(tint, in: Circle())
+                            .contentTransition(.symbolEffect(.replace))
+                    }
+                    .accessibilityLabel(timer.isRunning ? "Pause timer" : timer.isIdle ? "Start timer" : "Resume timer")
+                    Color.clear.frame(width: 56, height: 56)
+                }
+                .buttonStyle(.pressable)
+                .sensoryFeedback(.impact(weight: .light), trigger: timer.isRunning)
+            } else if let edit {
+                Button("Edit time", action: edit).font(.subheadline.weight(.medium))
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, Space.m)
     }
 }
 
@@ -532,12 +615,15 @@ struct PhotoSection: View {
             if let path {
                 RemotePhoto(uri: path)
                     .frame(maxWidth: .infinity, minHeight: 180, maxHeight: 240)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                Button("Remove Photo", role: .destructive) { self.path = nil }
+                    .clipShape(RoundedRectangle(cornerRadius: Radius.s, style: .continuous))
+                    .listRowInsets(EdgeInsets(top: Space.s, leading: Space.s, bottom: Space.s, trailing: Space.s))
+                Button(role: .destructive) { withAnimation(.snappy) { self.path = nil } } label: {
+                    Label("Remove Photo", systemImage: "trash")
+                }
             } else {
                 PhotosPicker(selection: $item, matching: .images) { Label("Add Photo", systemImage: "camera") }
             }
-            if let error { Text(error).font(.footnote).foregroundStyle(.red) }
+            if let error { Text(error).font(.footnote).foregroundStyle(Palette.critical) }
         }
         .onChange(of: item) { _, picked in
             guard let picked else { return }

@@ -10,18 +10,22 @@ struct AppointmentsView: View {
 
     var body: some View {
         let profile = family.selectedProfile
-        List {
-            if let appointments {
-                Clock(interval: 60) { now in
+        Clock(interval: 60) { now in
+            List {
+                if let appointments {
                     let upcoming = appointments.filter { $0.startsAt >= now }.sorted { $0.startsAt < $1.startsAt }
                     let past = appointments.filter { $0.startsAt < now }.sorted { $0.startsAt > $1.startsAt }
                     if appointments.isEmpty {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("No appointments yet").font(.headline)
-                            Text("Keep track of \(profile?.name ?? "your child")'s doctor visits, with questions to ask and a reminder before each one.")
-                                .foregroundStyle(.secondary)
-                            Button("Add appointment") { app.push(.appointment(id: nil)) }
+                        EmptyStateView(
+                            icon: .calendar,
+                            tint: Self.tint,
+                            title: "No appointments yet",
+                            message: "Keep track of \(profile?.name ?? "your child")'s doctor visits, with questions to ask and a reminder before each one."
+                        ) {
+                            Button { app.push(.appointment(id: nil)) } label: { Label("Add Appointment", systemImage: "plus") }
+                                .buttonStyle(.secondary)
                         }
+                        .listRowBackground(Color.clear)
                     }
                     if !upcoming.isEmpty {
                         Section("Upcoming") {
@@ -35,9 +39,9 @@ struct AppointmentsView: View {
                             ForEach(past) { row($0, next: false, now: now) }
                         }
                     }
+                } else {
+                    HStack(spacing: Space.m) { ProgressView(); Text("Loading…").foregroundStyle(.secondary) }
                 }
-            } else {
-                Text("Loading…").foregroundStyle(.secondary)
             }
         }
         .navigationTitle("Appointments")
@@ -52,35 +56,63 @@ struct AppointmentsView: View {
         }
     }
 
+    private static var tint: Color { CardKind.HEALTH.color }
+
     private func row(_ a: AppointmentEntity, next: Bool, now: EpochMs) -> some View {
-        Button { app.push(.appointment(id: a.id)) } label: {
-            HStack(alignment: .top, spacing: 12) {
+        let upcoming = a.startsAt >= now
+        return Button { app.push(.appointment(id: a.id)) } label: {
+            HStack(alignment: .top, spacing: Space.m) {
                 VStack(spacing: 0) {
-                    Text(Format.pattern("MMM", a.startsAt).uppercased()).font(.caption2.weight(.bold))
-                    Text(Format.pattern("d", a.startsAt)).font(.title3.weight(.semibold))
+                    Text(Format.pattern("MMM", a.startsAt)).font(.caption.weight(.semibold))
+                    Text(Format.pattern("d", a.startsAt)).font(.rounded(.title2, weight: .bold)).monospacedDigit()
                 }
-                .frame(width: 48, height: 48)
-                .background(CardKind.HEALTH.color.opacity(0.15), in: RoundedRectangle(cornerRadius: 10))
+                .foregroundStyle(next ? .white : upcoming ? Self.tint : .secondary)
+                .frame(width: 52, height: 56)
+                .background(
+                    next ? Self.tint : upcoming ? Self.tint.opacity(0.14) : Color(.tertiarySystemFill),
+                    in: RoundedRectangle(cornerRadius: Radius.s, style: .continuous)
+                )
                 VStack(alignment: .leading, spacing: 3) {
                     if next {
-                        Text("Next appointment").font(.caption2.weight(.bold)).foregroundStyle(CardKind.HEALTH.color)
+                        Text("Next appointment").font(.caption.weight(.semibold)).foregroundStyle(Self.tint)
                     }
                     Text(a.title).font(.headline)
                     let place = [a.doctorName, a.location].compactMap { $0?.trimmedNilIfEmpty }.joined(separator: " · ")
                     if !place.isEmpty { Text(place).font(.subheadline).foregroundStyle(.secondary) }
+                    HStack(spacing: Space.m) {
+                        Label(Format.countdown(a.startsAt, now: now), systemImage: "clock")
+                        if a.reminderLead != .NONE {
+                            Label(a.reminderLead.label, systemImage: "bell")
+                        }
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .labelStyle(CompactLabelStyle())
                     if let progress = NotesProgress(a.notes) {
-                        Text(progress.done > 0 ? "\(progress.done)/\(progress.total) questions asked" : "\(progress.total) questions to ask")
-                            .font(.caption).foregroundStyle(.secondary)
+                        Label(
+                            progress.done > 0 ? "\(progress.done) of \(progress.total) questions asked" : "\(progress.total) questions to ask",
+                            systemImage: "checklist"
+                        )
+                        .font(.caption).foregroundStyle(.secondary)
+                        .labelStyle(CompactLabelStyle())
                     }
-                    if a.reminderLead != .NONE {
-                        Text("Reminder: \(a.reminderLead.label)").font(.caption).foregroundStyle(.secondary)
-                    }
-                    Text(Format.countdown(a.startsAt, now: now)).font(.caption).foregroundStyle(.secondary)
                 }
-                Spacer()
+                Spacer(minLength: 0)
             }
+            .foregroundStyle(Color.primary)
+            .padding(.vertical, Space.xs)
         }
-        .foregroundStyle(.primary)
+        .foregroundStyle(Color.primary)
+    }
+}
+
+/// Icon + text with tight spacing for metadata lines.
+struct CompactLabelStyle: LabelStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: 4) {
+            configuration.icon.imageScale(.small)
+            configuration.title
+        }
     }
 }
 
@@ -120,11 +152,13 @@ struct AppointmentDetailView: View {
                     if !isNew { Task { await save(dismissAfter: false) } }
                 }
                 if let message {
-                    Section { Text(message).foregroundStyle(.red) }
+                    Section { Text(message).foregroundStyle(Palette.critical) }
                 }
                 if !isNew {
                     Section {
-                        Button("Delete appointment", role: .destructive) { confirmDelete = true }
+                        Button(role: .destructive) { Haptics.warning(); confirmDelete = true } label: {
+                            Label("Delete Appointment", systemImage: "trash")
+                        }
                     }
                 }
             } else if let message {
@@ -133,11 +167,14 @@ struct AppointmentDetailView: View {
                 ProgressView()
             }
         }
-        .navigationTitle(isNew ? "New appointment" : "Appointment")
+        .navigationTitle(isNew ? "New Appointment" : "Appointment")
         .navigationBarTitleDisplayMode(.inline)
+        .tint(CardKind.HEALTH.color)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
-                Button("Save") { Task { await save(dismissAfter: true) } }.disabled(draft == nil || saving)
+                Button("Save") { Task { await save(dismissAfter: true) } }
+                    .fontWeight(.semibold)
+                    .disabled(draft == nil || saving)
             }
         }
         .confirmationDialog("Delete appointment?", isPresented: $confirmDelete, titleVisibility: .visible) {
@@ -159,8 +196,11 @@ struct AppointmentDetailView: View {
                 HStack {
                     ForEach(items, id: \.self) { item in
                         Button(item) { pick(item) }
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
+                            .font(.subheadline)
+                            .padding(.horizontal, Space.m)
+                            .frame(minHeight: 32)
+                            .background(Color(.tertiarySystemFill), in: Capsule())
+                            .buttonStyle(.pressable)
                     }
                 }
             }
@@ -222,7 +262,7 @@ struct AppointmentDetailView: View {
             let saved = try await app.repos.appointments.save(row, isNew: isNew)
             await NotificationScheduler.schedule(saved)
             message = nil
-            if dismissAfter { dismiss() } else { draft = saved }
+            if dismissAfter { Haptics.success(); dismiss() } else { draft = saved }
         } catch let conflict as ConflictError {
             if let latest = try? await app.repos.appointments.get(row.id) { draft = latest }
             message = conflict.errorDescription
@@ -252,34 +292,41 @@ struct NotesView: View {
 
     var body: some View {
         let profile = family.selectedProfile
-        List {
-            if let notes {
-                if notes.isEmpty {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("No notes yet").font(.headline)
-                        Text("Notes are shared with everyone in your family — routines, things to remember, questions and checklists.")
-                            .foregroundStyle(.secondary)
-                        Button("New note") { app.push(.note(id: nil)) }
+        Clock(interval: 60) { now in
+            List {
+                if let notes {
+                    if notes.isEmpty {
+                        EmptyStateView(
+                            icon: .note,
+                            title: "No notes yet",
+                            message: "Notes are shared with everyone in your family — routines, things to remember, questions and checklists."
+                        ) {
+                            Button { app.push(.note(id: nil)) } label: { Label("New Note", systemImage: "square.and.pencil") }
+                                .buttonStyle(.secondary)
+                        }
+                        .listRowBackground(Color.clear)
                     }
-                }
-                Clock(interval: 60) { now in
                     ForEach(notes) { note in
                         Button { app.push(.note(id: note.id)) } label: {
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(note.title.isBlank ? "Untitled" : note.title).font(.headline)
-                                if let first = note.body.components(separatedBy: "\n").first(where: { !$0.isBlank }) {
-                                    Text(first).lineLimit(1).foregroundStyle(.secondary)
+                            HStack(alignment: .top, spacing: Space.m) {
+                                IconTile(icon: NotesProgress(note.body) != nil ? .system("checklist") : .note, size: 36)
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(note.title.isBlank ? "Untitled" : note.title).font(.headline)
+                                    if let first = note.body.components(separatedBy: "\n").first(where: { !$0.isBlank }) {
+                                        Text(first).font(.subheadline).lineLimit(1).foregroundStyle(.secondary)
+                                    }
+                                    let progress = NotesProgress(note.body).map { " · \($0.done) of \($0.total) done" } ?? ""
+                                    Text("Edited \(Format.relativeDay(note.updatedAt, now: now))\(progress)")
+                                        .font(.caption).foregroundStyle(.tertiary)
                                 }
-                                let progress = NotesProgress(note.body).map { " · \($0.done) of \($0.total) done" } ?? ""
-                                Text("Edited \(Format.relativeDay(note.updatedAt, now: now))\(progress)")
-                                    .font(.caption).foregroundStyle(.secondary)
                             }
+                            .foregroundStyle(Color.primary)
+                            .padding(.vertical, 2)
                         }
-                        .foregroundStyle(.primary)
                     }
+                } else {
+                    HStack(spacing: Space.m) { ProgressView(); Text("Loading…").foregroundStyle(.secondary) }
                 }
-            } else {
-                Text("Loading…").foregroundStyle(.secondary)
             }
         }
         .navigationTitle("Notes")
@@ -319,11 +366,13 @@ struct NoteDetailView: View {
                     if !isNew { Task { await save(dismissAfter: false) } }
                 }
                 if let message {
-                    Section { Text(message).foregroundStyle(.red) }
+                    Section { Text(message).foregroundStyle(Palette.critical) }
                 }
                 if !isNew {
                     Section {
-                        Button("Delete note", role: .destructive) { confirmDelete = true }
+                        Button(role: .destructive) { Haptics.warning(); confirmDelete = true } label: {
+                            Label("Delete Note", systemImage: "trash")
+                        }
                     }
                 }
             } else if let message {
@@ -332,11 +381,13 @@ struct NoteDetailView: View {
                 ProgressView()
             }
         }
-        .navigationTitle(isNew ? "New note" : "Note")
+        .navigationTitle(isNew ? "New Note" : "Note")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
-                Button("Save") { Task { await save(dismissAfter: true) } }.disabled(draft == nil || saving)
+                Button("Save") { Task { await save(dismissAfter: true) } }
+                    .fontWeight(.semibold)
+                    .disabled(draft == nil || saving)
             }
         }
         .confirmationDialog("Delete note?", isPresented: $confirmDelete, titleVisibility: .visible) {
@@ -378,7 +429,7 @@ struct NoteDetailView: View {
             let saved = try await app.repos.notes.save(row, isNew: isNew)
             created = true
             message = nil
-            if dismissAfter { dismiss() } else { draft = saved }
+            if dismissAfter { Haptics.success(); dismiss() } else { draft = saved }
         } catch let conflict as ConflictError {
             if let latest = try? await app.repos.notes.get(row.id) { draft = latest }
             message = conflict.errorDescription

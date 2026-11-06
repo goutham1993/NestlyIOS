@@ -88,15 +88,15 @@ struct FormattedNotesSection: View {
                     onToggle(text)
                 }
             } else {
-                HStack(spacing: 8) {
-                    Button("• Bullet") { handle.format(.BULLET) }
-                    Button("1. Numbered") { handle.format(.NUMBERED) }
-                    Button("☐ Checkbox") { handle.format(.CHECKBOX) }
+                HStack(spacing: Space.xs) {
+                    formatButton("list.bullet", "Bullet list") { handle.format(.BULLET) }
+                    formatButton("list.number", "Numbered list") { handle.format(.NUMBERED) }
+                    formatButton("checklist", "Checklist") { handle.format(.CHECKBOX) }
                     Spacer()
-                    Button("Done") { handle.done() }.bold()
+                    Button("Done") { handle.done() }
+                        .font(.subheadline.weight(.semibold))
+                        .buttonStyle(.borderless)
                 }
-                .buttonStyle(.borderless)
-                .font(.footnote)
                 NotesTextView(text: $text, handle: handle)
                     .frame(minHeight: 180)
             }
@@ -104,10 +104,26 @@ struct FormattedNotesSection: View {
             HStack {
                 Text(title)
                 Spacer()
-                if let progress = NotesProgress(text) { Text("\(progress.done) of \(progress.total) done") }
-                Button(preview ? "Edit" : "Preview") { preview.toggle() }.textCase(nil)
+                if let progress = NotesProgress(text) {
+                    Text("\(progress.done) of \(progress.total) done").monospacedDigit()
+                }
+                Button(preview ? "Edit" : "Preview") { withAnimation(.snappy) { preview.toggle() } }
+                    .font(.subheadline.weight(.medium))
             }
+            .textCase(nil)
         }
+    }
+
+    private func formatButton(_ symbol: String, _ label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.body.weight(.medium))
+                .frame(width: 40, height: 34)
+                .background(Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        }
+        .buttonStyle(.pressable)
+        .foregroundStyle(Color.primary)
+        .accessibilityLabel(label)
     }
 }
 
@@ -125,14 +141,20 @@ struct NotesPreview: View {
                 || line.trimmingCharacters(in: .whitespaces).hasPrefix(AppointmentNotesFormat.CHECKED_PREFIX.trimmingCharacters(in: .whitespaces)) {
                 let checked = line.trimmingCharacters(in: .whitespaces).hasPrefix("☑")
                 Button { toggle(index) } label: {
-                    HStack(alignment: .top) {
-                        Image(systemName: checked ? "checkmark.square.fill" : "square")
+                    HStack(alignment: .firstTextBaseline, spacing: Space.m) {
+                        Image(systemName: checked ? "checkmark.circle.fill" : "circle")
+                            .font(.title3)
+                            .foregroundStyle(checked ? AnyShapeStyle(.tint) : AnyShapeStyle(Color(.tertiaryLabel)))
+                            .contentTransition(.symbolEffect(.replace))
                         Text(String(line.trimmingCharacters(in: .whitespaces).dropFirst(2)))
                             .strikethrough(checked)
                             .foregroundStyle(checked ? .secondary : .primary)
                     }
+                    .contentShape(Rectangle())
                 }
-                .foregroundStyle(.primary)
+                .foregroundStyle(Color.primary)
+                .sensoryFeedback(.selection, trigger: checked)
+                .accessibilityValue(checked ? "Checked" : "Unchecked")
             } else if !line.isBlank {
                 Text(line)
             }

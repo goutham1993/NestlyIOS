@@ -9,6 +9,9 @@ struct HistoryTab: View {
     @State private var selected = LocalDate.today()
     @State private var entries: [ActivityEntity]?
     @State private var showFilters = false
+    @State private var weekDirection: Edge = .trailing
+    @Namespace private var selection
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var zone: TimeZone { .current }
 
@@ -25,34 +28,46 @@ struct HistoryTab: View {
         let filtered = ActivityFilters.filter(entries ?? [], prefs.filters)
         Clock(interval: 60) { now in
             ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: Space.l) {
                     weekStrip(start)
-                    TimelineGrid(weekStart: start, entries: filtered, selected: selected, now: now) { day in
-                        selected = day
-                    } onEntry: { app.openEntry(.edit(activityId: $0.id)) }
-                        .frame(height: 420)
+                    Card(padding: Space.m) {
+                        TimelineGrid(weekStart: start, entries: filtered, selected: selected, now: now) { day in
+                            withAnimation(.snappy) { selected = day }
+                        } onEntry: { app.openEntry(.edit(activityId: $0.id)) }
+                            .frame(height: 420)
+                            .id(start)
+                            .transition(reduceMotion ? .opacity : .asymmetric(
+                                insertion: .move(edge: weekDirection).combined(with: .opacity),
+                                removal: .opacity
+                            ))
+                    }
+                    .clipped()
                     dayList(filtered, now)
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, Space.l)
+                .padding(.bottom, Space.l)
             }
+            .background(Color(.systemGroupedBackground))
             .gesture(DragGesture(minimumDistance: 40).onEnded { value in
                 guard abs(value.translation.width) > abs(value.translation.height) else { return }
-                if value.translation.width < 0 { nextWeek() } else { selected = selected.minusDays(7) }
+                if value.translation.width < 0 { nextWeek() } else { previousWeek() }
             })
+            .sensoryFeedback(.selection, trigger: selected)
         }
         .navigationTitle(Format.dateText(selected, "EEE, MMM d"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Button { showFilters = true } label: {
-                    Label(prefs.filters.isEmpty ? "Filters" : "Filters (\(prefs.filters.count))", systemImage: "line.3.horizontal.decrease.circle")
-                        .labelStyle(.titleAndIcon)
+                    Image(systemName: prefs.filters.isEmpty ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
                 }
+                .accessibilityLabel(prefs.filters.isEmpty ? "Filters" : "Filters, \(prefs.filters.count) on")
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
-                    Button("Set Reminders") { app.push(.reminders) }
+                    Button { app.push(.reminders) } label: { Label("Set Reminders", systemImage: "bell") }
                 } label: { Image(systemName: "ellipsis.circle") }
+                    .accessibilityLabel("More")
             }
         }
         .sheet(isPresented: $showFilters) { FiltersSheet() }
@@ -66,64 +81,107 @@ struct HistoryTab: View {
     }
 
     private func nextWeek() {
-        let next = selected.plusDays(7)
-        selected = min(next, LocalDate.today(zone))
+        guard !isCurrentWeek else { return }
+        weekDirection = .trailing
+        withAnimation(.snappy) { selected = min(selected.plusDays(7), LocalDate.today(zone)) }
+    }
+
+    private func previousWeek() {
+        weekDirection = .leading
+        withAnimation(.snappy) { selected = selected.minusDays(7) }
     }
 
     private func weekStrip(_ start: LocalDate) -> some View {
         let days = (0 ..< 7).map { start.plusDays($0) }
         let months = Array(NSOrderedSet(array: days.map { Format.dateText($0, "MMMM") })) as? [String] ?? []
-        return VStack(spacing: 8) {
+        let today = LocalDate.today(zone)
+        return VStack(spacing: Space.m) {
             HStack {
-                Button { selected = selected.minusDays(7) } label: { Image(systemName: "chevron.left") }
+                Button { previousWeek() } label: { chevron("chevron.left") }
                     .accessibilityLabel("Previous week")
                 Spacer()
-                Text(months.joined(separator: " / ")).font(.headline)
+                Text(months.joined(separator: " / ")).font(.rounded(.headline)).contentTransition(.opacity)
                 Spacer()
-                Button { nextWeek() } label: { Image(systemName: "chevron.right") }
+                Button { nextWeek() } label: { chevron("chevron.right") }
                     .disabled(isCurrentWeek)
                     .accessibilityLabel("Next week")
             }
-            HStack(spacing: 4) {
+            HStack(spacing: Space.xs) {
                 ForEach(days, id: \.self) { day in
                     let isSelected = day == selected
-                    let future = LocalDate.today(zone) < day
-                    Button { selected = day } label: {
-                        VStack(spacing: 2) {
-                            Text(Format.dateText(day, "EEEEE")).font(.caption2)
-                            Text("\(day.day)").font(.subheadline.weight(.semibold))
+                    let future = today < day
+                    Button { withAnimation(.snappy) { selected = day } } label: {
+                        VStack(spacing: 4) {
+                            Text(Format.dateText(day, "EEEEE")).font(.caption2.weight(.medium))
+                                .foregroundStyle(isSelected ? .white.opacity(0.85) : .secondary)
+                            Text("\(day.day)").font(.rounded(.body, weight: .bold)).monospacedDigit()
+                            Circle().fill(day == today ? (isSelected ? Color.white : Palette.accent) : .clear)
+                                .frame(width: 4, height: 4)
                         }
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                        .background(isSelected ? Color.accentColor : .clear, in: RoundedRectangle(cornerRadius: 10))
-                        .foregroundStyle(isSelected ? .white : future ? .secondary : .primary)
+                        .frame(maxWidth: .infinity, minHeight: 58)
+                        .foregroundStyle(isSelected ? .white : future ? Color(.tertiaryLabel) : .primary)
+                        .background {
+                            if isSelected {
+                                RoundedRectangle(cornerRadius: Radius.s, style: .continuous)
+                                    .fill(Palette.accent)
+                                    .matchedGeometryEffect(id: "day", in: selection)
+                            }
+                        }
+                        .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.pressable)
                     .disabled(future)
+                    .accessibilityLabel(Format.dateText(day, "EEEE, MMMM d"))
+                    .accessibilityAddTraits(isSelected ? .isSelected : [])
                 }
             }
         }
+        .padding(Space.m)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: Radius.l, style: .continuous))
+    }
+
+    private func chevron(_ name: String) -> some View {
+        Image(systemName: name)
+            .font(.subheadline.weight(.semibold))
+            .frame(width: 36, height: 36)
+            .background(Color(.tertiarySystemFill), in: Circle())
     }
 
     @ViewBuilder private func dayList(_ all: [ActivityEntity], _ now: EpochMs) -> some View {
         let from = selected.startOfDayMs(zone), to = selected.plusDays(1).startOfDayMs(zone)
         let rows = all.filter { $0.startTime >= from && $0.startTime < to }.sorted { $0.startTime > $1.startTime }
         let bars = Bars.fractions(rows)
-        HStack {
-            Text(Format.dateText(selected, "EEEE, MMM d")).font(.headline)
+        HStack(alignment: .firstTextBaseline) {
+            SectionTitle(Format.dateText(selected, "EEEE, MMM d"))
             Spacer()
-            Text(rows.isEmpty ? "" : rows.count == 1 ? "1 entry" : "\(rows.count) entries").foregroundStyle(.secondary)
+            Text(rows.isEmpty ? "" : rows.count == 1 ? "1 entry" : "\(rows.count) entries")
+                .font(.subheadline).foregroundStyle(.secondary)
+                .contentTransition(.numericText())
         }
-        if entries == nil {
-            ProgressView().frame(maxWidth: .infinity)
-        } else if rows.isEmpty {
-            Text("Nothing logged.").foregroundStyle(.secondary)
+        .padding(.top, Space.s)
+        Card(padding: Space.m) {
+            if entries == nil {
+                ProgressView().frame(maxWidth: .infinity).padding(Space.l)
+            } else if rows.isEmpty {
+                HStack(spacing: Space.m) {
+                    IconTile(icon: .crib, tint: .secondary, size: 34)
+                    Text(prefs.filters.isEmpty ? "Nothing logged this day." : "Nothing matches your filters this day.")
+                        .font(.subheadline).foregroundStyle(.secondary)
+                }
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(Array(rows.enumerated()), id: \.element.id) { index, entry in
+                        if index > 0 { Divider().padding(.leading, 46) }
+                        Button { app.openEntry(.edit(activityId: entry.id)) } label: {
+                            ActivityRow(entry: entry, barFraction: bars[entry.id], now: now)
+                                .padding(.vertical, Space.s)
+                        }
+                        .buttonStyle(.pressable)
+                    }
+                }
+            }
         }
-        ForEach(rows) { entry in
-            ActivityRow(entry: entry, barFraction: bars[entry.id])
-                .padding(.vertical, 6)
-                .onTapGesture { app.openEntry(.edit(activityId: entry.id)) }
-            Divider()
-        }
+        .animation(.snappy, value: selected)
     }
 }
 
@@ -146,25 +204,29 @@ struct TimelineGrid: View {
             let perMs = height / 86_400_000
             ZStack(alignment: .topLeading) {
                 // Night bands before 06:00 and after 18:00.
-                Rectangle().fill(Color.indigo.opacity(0.08)).frame(height: height / 4).offset(x: labelWidth)
-                Rectangle().fill(Color.indigo.opacity(0.08)).frame(height: height / 4).offset(x: labelWidth, y: height * 0.75)
+                let nightWidth = geo.size.width - labelWidth
+                RoundedRectangle(cornerRadius: 6, style: .continuous).fill(Palette.sleep.opacity(0.07))
+                    .frame(width: nightWidth, height: height / 4).offset(x: labelWidth)
+                RoundedRectangle(cornerRadius: 6, style: .continuous).fill(Palette.sleep.opacity(0.07))
+                    .frame(width: nightWidth, height: height / 4).offset(x: labelWidth, y: height * 0.75)
                 ForEach(0 ..< 9) { i in
                     let y = height * CGFloat(i) / 8
                     Path { p in
                         p.move(to: CGPoint(x: labelWidth, y: y))
                         p.addLine(to: CGPoint(x: geo.size.width, y: y))
                     }
-                    .stroke(Color.secondary.opacity(0.25), style: StrokeStyle(lineWidth: 0.5, dash: [3, 3]))
+                    .stroke(Color.secondary.opacity(i % 2 == 0 ? 0.22 : 0.1), style: StrokeStyle(lineWidth: 0.5, dash: [2, 3]))
                 }
-                ForEach(Array(["12\nAM", "6\nAM", "12\nPM", "6\nPM"].enumerated()), id: \.offset) { i, label in
-                    Text(label).font(.system(size: 9)).foregroundStyle(.secondary).multilineTextAlignment(.center)
-                        .frame(width: labelWidth)
-                        .offset(y: height * CGFloat(i) / 4)
+                ForEach(Array(["12a", "6a", "12p", "6p"].enumerated()), id: \.offset) { i, label in
+                    Text(label).font(.caption2.weight(.medium)).foregroundStyle(.tertiary)
+                        .frame(width: labelWidth - 4, alignment: .leading)
+                        .offset(y: height * CGFloat(i) / 4 + 2)
                 }
+                .accessibilityHidden(true)
                 ForEach(0 ..< 7) { i in
                     let day = weekStart.plusDays(i)
-                    Rectangle()
-                        .fill(day == selected ? Color.accentColor.opacity(0.08) : Color.clear)
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(day == selected ? Palette.accent.opacity(0.10) : Color.clear)
                         .contentShape(Rectangle())
                         .frame(width: colWidth, height: height)
                         .offset(x: labelWidth + colWidth * CGFloat(i))
@@ -177,20 +239,26 @@ struct TimelineGrid: View {
                         let dayStart = day.startOfDayMs(zone)
                         let y = CGFloat(entry.startTime - dayStart) * perMs
                         let durationMs = (entry.durationSec ?? 0) * 1000
-                        let h = max(4, min(height - y, CGFloat(durationMs) * perMs))
-                        RoundedRectangle(cornerRadius: 2)
-                            .fill(entry.type.color)
-                            .frame(width: colWidth - 6, height: h)
-                            .offset(x: labelWidth + colWidth * CGFloat(col) + 3, y: y)
+                        let h = max(5, min(height - y, CGFloat(durationMs) * perMs))
+                        Capsule(style: .continuous)
+                            .fill(entry.type.color.opacity(day == selected ? 1 : 0.8))
+                            .frame(width: colWidth - 10, height: h)
+                            .offset(x: labelWidth + colWidth * CGFloat(col) + 5, y: min(y, height - h))
                             .onTapGesture { onEntry(entry) }
+                            .accessibilityLabel("\(entry.type.displayName), \(Format.dayAndTime(entry.startTime, now: now))")
+                            .accessibilityAddTraits(.isButton)
                     }
                 }
                 let today = LocalDate.of(ms: now, zone: zone)
                 let todayCol = LocalDate.daysBetween(weekStart, today)
                 if todayCol >= 0, todayCol < 7 {
                     let y = CGFloat(now - today.startOfDayMs(zone)) * perMs
-                    Rectangle().fill(Color.red).frame(width: colWidth, height: 2)
-                        .offset(x: labelWidth + colWidth * CGFloat(todayCol), y: y)
+                    let x = labelWidth + colWidth * CGFloat(todayCol)
+                    Capsule().fill(Palette.accent).frame(width: colWidth - 4, height: 2)
+                        .offset(x: x + 2, y: y - 1)
+                    Circle().fill(Palette.accent).frame(width: 7, height: 7)
+                        .offset(x: x - 1, y: y - 3.5)
+                        .accessibilityHidden(true)
                 }
             }
         }

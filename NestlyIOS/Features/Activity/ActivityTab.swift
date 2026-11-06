@@ -43,6 +43,8 @@ struct DashboardData: Sendable, Equatable {
     }
 }
 
+// MARK: - Activity tab
+
 struct ActivityTab: View {
     @Environment(AppModel.self) private var app
     @Environment(FamilyStore.self) private var family
@@ -51,25 +53,35 @@ struct ActivityTab: View {
     @State private var timers: [TimerKey: TimerState] = TimerControl.store.timers()
     @State private var showSummary = false
 
+    private var visibleCards: [CardKind] { prefs.cardOrder.filter(prefs.isCardVisible) }
+
     var body: some View {
         Group {
             if let profile = family.selectedProfile {
                 Clock(interval: timers.values.contains(where: \.isRunning) ? 1 : 30) { now in
                     ScrollView {
-                        VStack(spacing: 14) {
-                            header(profile, now)
+                        VStack(alignment: .leading, spacing: Space.xl) {
+                            ChildHeader(profile: profile, now: now)
+                            TimerBanners(timers: timers, now: now)
+                            QuickLogRow(cards: visibleCards)
                             if let data {
-                                ForEach(prefs.cardOrder.filter(prefs.isCardVisible), id: \.self) { card in
-                                    DashboardCard(card: card, data: data, timers: timers, now: now)
-                                }
+                                AtAGlance(cards: visibleCards, data: data, timers: timers, now: now)
+                                TodayCard(cards: visibleCards, data: data, now: now)
+                                if visibleCards.contains(.GROWTH) { GrowthCard(data: data) }
+                                if visibleCards.contains(.HEALTH) { HealthCard(data: data, now: now) }
                             } else {
-                                ProgressView().padding(40)
+                                ProgressView().frame(maxWidth: .infinity).padding(40)
                             }
-                            Button("Edit Activities") { app.push(.editActivities) }
-                                .buttonStyle(.bordered)
-                                .padding(.vertical, 8)
+                            Button { app.push(.editActivities) } label: {
+                                Label("Edit Activities", systemImage: "slider.horizontal.3")
+                            }
+                            .font(.subheadline.weight(.medium))
+                            .frame(maxWidth: .infinity)
+                            .padding(.bottom, Space.l)
                         }
-                        .padding(.horizontal, 16)
+                        .padding(.horizontal, Space.l)
+                        .padding(.top, Space.s)
+                        .animation(.snappy, value: timers)
                     }
                     .background(Color(.systemGroupedBackground))
                 }
@@ -80,21 +92,24 @@ struct ActivityTab: View {
                 WelcomeView()
             }
         }
-        .navigationTitle("Nestly")
+        .navigationTitle("Activity")
         .navigationBarTitleDisplayMode(.inline)
+        .hiddenNavigationTitle()
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
-                Button("Summary") { showSummary = true }
+                Button { showSummary = true } label: { Image(systemName: "list.bullet.rectangle.portrait") }
+                    .accessibilityLabel("Summary")
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
-                    Button("Set Reminders") { app.push(.reminders) }
-                    Button("Doctor Appointments") { app.push(.appointments) }
-                    Button("Notes") { app.push(.notes) }
-                    Button("Edit Activities") { app.push(.editActivities) }
-                    Button("Nightstand Mode") { app.showNightstand = true }
+                    Button { app.push(.reminders) } label: { Label("Set Reminders", systemImage: "bell") }
+                    Button { app.push(.appointments) } label: { Label("Doctor Appointments", systemImage: "calendar") }
+                    Button { app.push(.notes) } label: { Label("Notes", systemImage: "note.text") }
+                    Button { app.push(.editActivities) } label: { Label("Edit Activities", systemImage: "slider.horizontal.3") }
+                    Divider()
+                    Button { app.showNightstand = true } label: { Label("Nightstand Mode", systemImage: "moon.stars") }
                 } label: { Image(systemName: "ellipsis.circle") }
-                .accessibilityLabel("More")
+                    .accessibilityLabel("More")
             }
         }
         .sheet(isPresented: $showSummary) { SummarySheet(entries: data?.recent ?? []) }
@@ -103,70 +118,159 @@ struct ActivityTab: View {
         }
         .onAppear { timers = TimerControl.store.timers() }
     }
-
-    private func header(_ profile: ProfileEntity, _ now: EpochMs) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(profile.name).font(.largeTitle.bold())
-            HStack {
-                if let birth = profile.birthDate, let age = Format.age(birth) { Text(age) }
-                Spacer()
-                Text(Format.headerDate(now))
-            }
-            .font(.subheadline).foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.top, 8)
-    }
 }
 
-struct WelcomeView: View {
-    @Environment(AppModel.self) private var app
-    @State private var adding = false
+// MARK: - Header
+
+private struct ChildHeader: View {
+    let profile: ProfileEntity
+    let now: EpochMs
+    @Environment(FamilyStore.self) private var family
 
     var body: some View {
-        VStack(spacing: 16) {
-            Text("Welcome to Nestly").font(.title.bold())
-            Text("Track feeds, pumping, diapers, sleep and more. Add your child to get started, or bring your history over from Nara Baby.")
-                .multilineTextAlignment(.center).foregroundStyle(.secondary)
-            Button("Add Child") { adding = true }.buttonStyle(.borderedProminent)
-            Button("Import from Nara") { app.push(.importExport) }.buttonStyle(.bordered)
-        }
-        .padding(32)
-        .sheet(isPresented: $adding) {
-            ChildForm(title: "Add child", askCaregiverName: true) { name, sex, birth, caregiver in
-                try await app.repos.family.addChild(name: name, sex: sex, birthDate: birth, caregiverName: caregiver)
+        HStack(spacing: Space.m) {
+            ChildAvatar(name: profile.name, size: 56)
+            VStack(alignment: .leading, spacing: 2) {
+                let profiles = family.profiles ?? []
+                if profiles.count > 1 {
+                    Menu {
+                        ForEach(profiles) { child in
+                            Button { family.select(child) } label: {
+                                if child.id == profile.id { Label(child.name, systemImage: "checkmark") } else { Text(child.name) }
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 6) {
+                            name
+                            Image(systemName: "chevron.down.circle.fill")
+                                .font(.title3).symbolRenderingMode(.hierarchical).foregroundStyle(.secondary)
+                        }
+                    }
+                    .accessibilityLabel("\(profile.name), switch child")
+                } else {
+                    name
+                }
+                Text(subtitle).font(.subheadline).foregroundStyle(.secondary)
             }
+            Spacer(minLength: 0)
         }
+        .accessibilityElement(children: .combine)
+    }
+
+    private var name: some View {
+        Text(profile.name)
+            .font(.rounded(.largeTitle, weight: .bold))
+            .foregroundStyle(Color.primary)
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)
+    }
+
+    private var subtitle: String {
+        let age = profile.birthDate.flatMap { Format.age($0) }
+        return [age, Format.headerDate(now)].compactMap { $0 }.joined(separator: " · ")
     }
 }
 
-// MARK: - Cards
+// MARK: - Running timers
 
-struct DashboardCard: View {
-    let card: CardKind
-    let data: DashboardData
+private struct TimerBanners: View {
     let timers: [TimerKey: TimerState]
     let now: EpochMs
-    @Environment(AppModel.self) private var app
-    @Environment(Preferences.self) private var prefs
-    @State private var expanded: Bool?
 
     var body: some View {
-        SectionCard {
-            HStack {
-                Label(card.title, systemImage: card.symbol)
-                    .font(.headline).foregroundStyle(card.color)
-                Spacer()
-                addButton
+        let active = TimerGroup.allCases.compactMap { group in
+            TimerControl.state(group, now: now).map { (group, $0) }
+        }
+        if !active.isEmpty {
+            VStack(spacing: Space.s) {
+                ForEach(active, id: \.0) { group, state in
+                    TimerBanner(group: group, state: state, sessionStart: group.keys.compactMap { timers[$0]?.sessionStart }.min(), now: now)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
             }
-            summary
-            if card != .HEALTH && card != .GROWTH { todayList }
+        }
+    }
+}
+
+private struct TimerBanner: View {
+    let group: TimerGroup
+    let state: TimerGroupState
+    let sessionStart: EpochMs?
+    let now: EpochMs
+    @Environment(AppModel.self) private var app
+
+    var body: some View {
+        let running = !state.isPaused
+        HStack(spacing: Space.m) {
+            Button { app.openEntry(.new(kind: group.entryKind)) } label: {
+                HStack(spacing: Space.m) {
+                    IconTile(icon: group.icon, tint: group.color, size: 44, filled: true)
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 6) {
+                            if running { LiveDot(tint: group.color) }
+                            Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(Color.primary)
+                        }
+                        Text(Format.stopwatch(state.elapsedSeconds(at: Date(epochMs: now))))
+                            .font(.rounded(.title2, weight: .bold))
+                            .monospacedDigit()
+                            .contentTransition(.numericText())
+                            .foregroundStyle(Color.primary)
+                        if let sessionStart, group == .SLEEP {
+                            Text("Since \(Format.time(sessionStart))").font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                    Spacer(minLength: 0)
+                }
+            }
+            .buttonStyle(.pressable)
+            Button { TimerControl.pauseResume(group) } label: {
+                Image(systemName: running ? "pause.fill" : "play.fill")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(group.color)
+                    .frame(width: 48, height: 48)
+                    .background(group.color.opacity(0.16), in: Circle())
+                    .contentTransition(.symbolEffect(.replace))
+            }
+            .buttonStyle(.pressable)
+            .accessibilityLabel(running ? "Pause" : "Resume")
+        }
+        .padding(Space.m)
+        .background(group.color.opacity(0.10), in: RoundedRectangle(cornerRadius: Radius.l, style: .continuous))
+        .sensoryFeedback(.impact(weight: .light), trigger: running)
+    }
+
+    private var title: String {
+        let base: String
+        switch group {
+        case .BREASTFEED: base = "Breastfeeding" + (state.side.map { $0 == .LEFT ? " · Left" : " · Right" } ?? "")
+        case .PUMP: base = "Pumping"
+        case .SLEEP: base = "Sleeping"
+        }
+        return state.isPaused ? "\(base) · Paused" : base
+    }
+}
+
+// MARK: - Quick log
+
+private struct QuickLogRow: View {
+    let cards: [CardKind]
+    @Environment(AppModel.self) private var app
+    @Environment(Preferences.self) private var prefs
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Space.m) {
+            SectionTitle("Log")
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: Space.m) {
+                    ForEach(cards.filter { $0 != .HEALTH }, id: \.self) { card in tile(card) }
+                }
+                .padding(.horizontal, Space.l)
+            }
+            .padding(.horizontal, -Space.l)
         }
     }
 
-    // MARK: Header actions
-
-    @ViewBuilder private var addButton: some View {
+    @ViewBuilder private func tile(_ card: CardKind) -> some View {
         let disabled = prefs.disabledToggles
         switch card {
         case .FEED:
@@ -176,129 +280,310 @@ struct DashboardCard: View {
                 if !disabled.contains(.SOLID_FEEDING) { entryButton(.SOLIDS) }
                 if !disabled.contains(.COMBO_FEEDING) { entryButton(.COMBO) }
                 entryButton(.VITAMIN_D)
-            } label: { addLabel }
-        case .PUMP: Button { app.openEntry(.new(kind: .PUMP)) } label: { addLabel }
-        case .DIAPER: Button { app.openEntry(.new(kind: .DIAPER)) } label: { addLabel }
-        case .SLEEP: Button { app.openEntry(.new(kind: .SLEEP)) } label: { addLabel }
-        case .ROUTINE: Button { app.openEntry(.new(kind: .ROUTINE)) } label: { addLabel }
-        case .BABY_FIRSTS: Button { app.openEntry(.new(kind: .BABY_FIRST)) } label: { addLabel }
+            } label: { QuickLogTile(card: card) }
+                .buttonStyle(.pressable)
         case .GROWTH:
             Menu {
                 entryButton(.GROWTH)
                 entryButton(.MILESTONE)
-            } label: { addLabel }
+            } label: { QuickLogTile(card: card) }
+                .buttonStyle(.pressable)
+        case .PUMP: open(.PUMP, card)
+        case .DIAPER: open(.DIAPER, card)
+        case .SLEEP: open(.SLEEP, card)
+        case .ROUTINE: open(.ROUTINE, card)
+        case .BABY_FIRSTS: open(.BABY_FIRST, card)
         case .HEALTH: EmptyView()
         }
     }
 
-    private var addLabel: some View {
-        Label("Add", systemImage: "plus.circle.fill").labelStyle(.iconOnly).font(.title2).foregroundStyle(card.color)
-            .accessibilityLabel("Add \(card.title)")
+    private func open(_ kind: EntryKind, _ card: CardKind) -> some View {
+        Button {
+            Haptics.tap()
+            app.openEntry(.new(kind: kind))
+        } label: { QuickLogTile(card: card) }
+            .buttonStyle(.pressable)
     }
 
     private func entryButton(_ kind: EntryKind) -> some View {
-        Button { app.openEntry(.new(kind: kind)) } label: { Label(kind.title, systemImage: kind.symbol) }
+        Button { app.openEntry(.new(kind: kind)) } label: {
+            Label { Text(kind.title) } icon: { kind.icon.image }
+        }
+    }
+}
+
+private struct QuickLogTile: View {
+    let card: CardKind
+
+    var body: some View {
+        VStack(spacing: Space.s) {
+            IconTile(icon: card.icon, tint: card.color, size: 56)
+            Text(card.title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Color.primary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .frame(width: 76)
+        .padding(.vertical, Space.m)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: Radius.l, style: .continuous))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Log \(card.title)")
+        .accessibilityAddTraits(.isButton)
+    }
+}
+
+// MARK: - At a glance
+
+private struct AtAGlance: View {
+    let cards: [CardKind]
+    let data: DashboardData
+    let timers: [TimerKey: TimerState]
+    let now: EpochMs
+    @Environment(AppModel.self) private var app
+    @Environment(Preferences.self) private var prefs
+
+    private static let glanceable: Set<CardKind> = [.FEED, .PUMP, .DIAPER, .SLEEP, .ROUTINE, .BABY_FIRSTS]
+
+    var body: some View {
+        let shown = cards.filter(Self.glanceable.contains)
+        if !shown.isEmpty {
+            VStack(alignment: .leading, spacing: Space.m) {
+                SectionTitle("At a glance")
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: Space.m), GridItem(.flexible(), spacing: Space.m)], spacing: Space.m) {
+                    ForEach(shown, id: \.self) { card in
+                        Button { open(card) } label: { StatusCard(card: card, status: status(card)) }
+                            .buttonStyle(.pressable)
+                    }
+                }
+            }
+        }
     }
 
-    // MARK: Summary rows
+    /// Edits the latest entry; starts a new one when there is none yet.
+    private func open(_ card: CardKind) {
+        if let latest = data.latest[card] {
+            app.openEntry(.edit(activityId: latest.id))
+        } else {
+            app.openEntry(.new(kind: defaultKind(card)))
+        }
+    }
 
-    @ViewBuilder private var summary: some View {
+    private func defaultKind(_ card: CardKind) -> EntryKind {
+        switch card {
+        case .FEED:
+            let disabled = prefs.disabledToggles
+            if !disabled.contains(.BOTTLE_FEEDING) { return .BOTTLE }
+            if !disabled.contains(.BREASTFEEDING) { return .BREASTFEED }
+            return .SOLIDS
+        case .PUMP: return .PUMP
+        case .DIAPER: return .DIAPER
+        case .SLEEP: return .SLEEP
+        case .ROUTINE: return .ROUTINE
+        case .BABY_FIRSTS: return .BABY_FIRST
+        case .GROWTH: return .GROWTH
+        case .HEALTH: return .MEDICAL
+        }
+    }
+
+    private func status(_ card: CardKind) -> StatusCard.Status {
         let latest = data.latest[card]
         switch card {
         case .FEED:
-            if let breast = runningElapsed([.BREAST_LEFT, .BREAST_RIGHT]) {
-                infoRow("Breastfeeding", Format.duration(breast), highlight: true)
-                    .onTapGesture { app.openEntry(.new(kind: .BREASTFEED)) }
+            guard let latest else { return .empty("Track a feeding") }
+            var footnote: String?
+            var footnoteTint: Color = .secondary
+            let next = ReminderLogic.nextFeedState(latest.startTime, data.feedInterval, now: now)
+            if let text = Format.nextFeeding(next) {
+                footnote = text.replacingOccurrences(of: "Next feeding", with: "Next")
+                if case .overdue = next { footnoteTint = Palette.warning }
+                if case .dueNow = next { footnoteTint = Palette.warning }
             }
-            if let latest {
-                infoRow("Last feeding", "\(Format.ago(latest.startTime, now: now))  \(feedValue(latest))")
-                if let text = Format.nextFeeding(ReminderLogic.nextFeedState(latest.startTime, data.feedInterval, now: now)) {
-                    Text(text).font(.subheadline).foregroundStyle(.secondary)
-                }
-            } else if runningElapsed([.BREAST_LEFT, .BREAST_RIGHT]) == nil {
-                empty("Track a feeding")
-            }
+            return .value(Format.ago(latest.startTime, now: now), detail: feedValue(latest), footnote: footnote, footnoteTint: footnoteTint)
         case .PUMP:
-            if let pump = runningElapsed([.PUMP]) {
-                infoRow("Pumping", Format.duration(pump), highlight: true).onTapGesture { app.openEntry(.new(kind: .PUMP)) }
-            }
-            if let latest {
-                infoRow("Last session", "\(Format.ago(latest.startTime, now: now))  \(latest.pump?.totalMl.map { Format.volume($0, prefs.units) } ?? "")")
-            } else if runningElapsed([.PUMP]) == nil {
-                empty("Track a pumping session")
-            }
+            guard let latest else { return .empty("Track a pumping session") }
+            return .value(Format.ago(latest.startTime, now: now), detail: latest.pump?.totalMl.map { Format.volume($0, prefs.units) })
         case .DIAPER:
-            if let latest { infoRow("Last change", "\(Format.ago(latest.startTime, now: now))  \(latest.label)") } else { empty("Track a diaper change") }
+            guard let latest else { return .empty("Track a diaper change") }
+            return .value(Format.ago(latest.startTime, now: now), detail: latest.label)
         case .SLEEP:
             let sleep = timers[.SLEEP] ?? TimerState()
             if !sleep.isIdle {
-                infoRow("Sleeping", "since \(Format.time(sleep.sessionStart ?? now))  \(Format.duration(sleep.elapsedMs(now) / 1000))", highlight: true)
-                    .onTapGesture { app.openEntry(.new(kind: .SLEEP)) }
-            } else if let latest {
-                infoRow("Last sleep", "\(Format.ago(latest.endTime ?? latest.startTime, now: now))  \(latest.durationSec.map(Format.duration) ?? "")")
-            } else {
-                empty("Track a sleep session")
+                return .value(Format.duration(sleep.elapsedMs(now) / 1000), detail: "Sleeping since \(Format.time(sleep.sessionStart ?? now))", live: true)
             }
+            guard let latest else { return .empty("Track a sleep session") }
+            return .value(Format.ago(latest.endTime ?? latest.startTime, now: now), detail: latest.durationSec.map { "Slept \(Format.duration($0))" })
         case .ROUTINE:
-            if let latest { infoRow(latest.label, Format.ago(latest.startTime, now: now)) } else { empty("Track a routine or create your own") }
+            guard let latest else { return .empty("Track a routine or create your own") }
+            return .value(latest.label, detail: Format.ago(latest.startTime, now: now))
         case .BABY_FIRSTS:
-            if let latest { infoRow(latest.label, Format.relativeDay(latest.startTime, now: now)) } else { empty("Track memorable moments") }
-        case .GROWTH:
-            growthRows
-        case .HEALTH:
-            healthRows
+            guard let latest else { return .empty("Track memorable moments") }
+            return .value(latest.label, detail: Format.relativeDay(latest.startTime, now: now))
+        case .GROWTH, .HEALTH:
+            return .empty("")
         }
     }
 
-    private var growthRows: some View {
+    private func feedValue(_ a: ActivityEntity) -> String? {
+        let value: String
+        switch a.type {
+        case .BOTTLE_FEED: value = a.bottle?.totalMl.map { Format.volume($0, prefs.units) } ?? ""
+        case .BREASTFEED: value = a.durationSec.map(Format.duration) ?? ""
+        default: value = a.label
+        }
+        let parts = [a.type.displayName, value].filter { !$0.isEmpty }
+        return parts.joined(separator: " · ")
+    }
+}
+
+private struct StatusCard: View {
+    enum Status {
+        case value(String, detail: String? = nil, footnote: String? = nil, footnoteTint: Color = .secondary, live: Bool = false)
+        case empty(String)
+    }
+
+    let card: CardKind
+    let status: Status
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Space.s) {
+            HStack(spacing: Space.s) {
+                IconTile(icon: card.icon, tint: card.color, size: 28)
+                Text(card.title).font(.subheadline.weight(.semibold)).foregroundStyle(card.color)
+                Spacer(minLength: 0)
+                if case .value(_, _, _, _, true) = status { LiveDot(tint: card.color) }
+            }
+            Spacer(minLength: 0)
+            switch status {
+            case let .value(primary, detail, footnote, footnoteTint, _):
+                Text(primary)
+                    .font(.rounded(.title3, weight: .bold))
+                    .foregroundStyle(Color.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                    .contentTransition(.numericText())
+                if let detail, !detail.isEmpty {
+                    Text(detail).font(.footnote).foregroundStyle(.secondary).lineLimit(2)
+                }
+                if let footnote {
+                    Text(footnote).font(.caption.weight(.medium)).foregroundStyle(footnoteTint).lineLimit(2)
+                }
+            case let .empty(text):
+                Text(text).font(.footnote).foregroundStyle(.secondary).lineLimit(2)
+                Label("Add", systemImage: "plus").font(.caption.weight(.semibold)).foregroundStyle(card.color)
+            }
+        }
+        .multilineTextAlignment(.leading)
+        .frame(maxWidth: .infinity, minHeight: 128, alignment: .topLeading)
+        .padding(Space.m)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: Radius.l, style: .continuous))
+        .accessibilityElement(children: .combine)
+    }
+}
+
+// MARK: - Today
+
+private struct TodayCard: View {
+    let cards: [CardKind]
+    let data: DashboardData
+    let now: EpochMs
+    @Environment(AppModel.self) private var app
+    @Environment(Preferences.self) private var prefs
+    @State private var expanded = false
+
+    private static let collapsedCount = 4
+
+    var body: some View {
+        let zone = TimeZone.current
+        let start = LocalDate.of(ms: now, zone: zone).startOfDayMs(zone)
+        let listed = Set(cards.filter { $0 != .HEALTH && $0 != .GROWTH }.flatMap(\.types))
+        let rows = ActivityFilters.filter(data.recent.filter { $0.startTime >= start && listed.contains($0.type) }, prefs.filters)
+            .sorted { $0.startTime > $1.startTime }
+        let shown = expanded ? rows : Array(rows.prefix(Self.collapsedCount))
+        let bars = Bars.fractions(rows)
+
+        VStack(alignment: .leading, spacing: Space.m) {
+            HStack(alignment: .firstTextBaseline) {
+                SectionTitle("Today")
+                Spacer()
+                if !rows.isEmpty {
+                    Text(rows.count == 1 ? "1 entry" : "\(rows.count) entries").font(.subheadline).foregroundStyle(.secondary)
+                }
+            }
+            Card(padding: Space.m) {
+                if rows.isEmpty {
+                    HStack(spacing: Space.m) {
+                        IconTile(icon: .stroller, tint: .secondary, size: 34)
+                        Text("Nothing logged yet today. Tap a tile above to start.")
+                            .font(.subheadline).foregroundStyle(.secondary)
+                    }
+                } else {
+                    VStack(spacing: 0) {
+                        ForEach(Array(shown.enumerated()), id: \.element.id) { index, entry in
+                            if index > 0 { Divider().padding(.leading, 46) }
+                            Button { app.openEntry(.edit(activityId: entry.id)) } label: {
+                                ActivityRow(entry: entry, barFraction: bars[entry.id], now: now)
+                                    .padding(.vertical, Space.s)
+                            }
+                            .buttonStyle(.pressable)
+                        }
+                    }
+                    Divider()
+                    HStack {
+                        if rows.count > Self.collapsedCount {
+                            Button {
+                                withAnimation(.snappy) { expanded.toggle() }
+                            } label: {
+                                Label(expanded ? "Show Less" : "Show All", systemImage: expanded ? "chevron.up" : "chevron.down")
+                            }
+                        }
+                        Spacer()
+                        Button { app.tab = .history } label: {
+                            HStack(spacing: 4) {
+                                Text("History")
+                                Image(systemName: "chevron.right").font(.caption.weight(.semibold))
+                            }
+                        }
+                    }
+                    .font(.subheadline.weight(.medium))
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Growth & Health
+
+private struct GrowthCard: View {
+    let data: DashboardData
+    @Environment(AppModel.self) private var app
+    @Environment(Preferences.self) private var prefs
+
+    var body: some View {
         let growth = data.growth.filter { $0.type == .GROWTH }.sorted { $0.startTime > $1.startTime }
         let milestones = Set(data.growth.filter { $0.type == .MILESTONE }.map { $0.milestone?.milestoneKey ?? MilestoneCatalog.normalizeTitle($0.milestone?.title ?? "") })
-        return VStack(spacing: 8) {
-            ForEach(GrowthMetric.allCases) { metric in
-                let value = growth.lazy.compactMap { metric.valueOf($0.growth) }.first
-                Button { app.push(.growth(metric)) } label: {
-                    infoRow(metric.label, value.map { format(metric, $0) } ?? "—", chevron: true)
+        VStack(alignment: .leading, spacing: Space.m) {
+            SectionTitle("Growth")
+            Card(padding: Space.m) {
+                VStack(spacing: 0) {
+                    ForEach(Array(GrowthMetric.allCases.enumerated()), id: \.element) { index, metric in
+                        if index > 0 { Divider().padding(.leading, 42) }
+                        let value = growth.lazy.compactMap { metric.valueOf($0.growth) }.first
+                        Button { app.push(.growth(metric)) } label: {
+                            IconRow(title: metric.label, icon: metric.icon, tint: CardKind.GROWTH.color, value: value.map { format(metric, $0) } ?? "—")
+                                .padding(.vertical, Space.s)
+                        }
+                        .buttonStyle(.pressable)
+                    }
+                    Divider().padding(.leading, 42)
+                    Button { app.push(.milestones) } label: {
+                        IconRow(title: "Milestones", icon: .milestone, tint: CardKind.GROWTH.color, value: "\(milestones.count) of \(MilestoneCatalog.totalCount)")
+                            .padding(.vertical, Space.s)
+                    }
+                    .buttonStyle(.pressable)
                 }
-                .buttonStyle(.plain)
             }
-            Button { app.push(.milestones) } label: {
-                infoRow("Milestones", "\(milestones.count) of \(MilestoneCatalog.totalCount)", chevron: true)
-            }
-            .buttonStyle(.plain)
         }
-    }
-
-    private var healthRows: some View {
-        let zone = TimeZone.current
-        let today = LocalDate.of(ms: now, zone: zone)
-        let given = DailyDose.givenAt(data.recent, startOfToday: today.startOfDayMs(zone), startOfTomorrow: today.plusDays(1).startOfDayMs(zone))
-        let givenEntry = given.flatMap { t in data.recent.first { $0.type == .VITAMIN_D && $0.startTime == t } }
-        return VStack(spacing: 8) {
-            Button {
-                if let givenEntry { app.openEntry(.edit(activityId: givenEntry.id)) } else { app.openEntry(.new(kind: .VITAMIN_D)) }
-            } label: {
-                infoRow("Vitamin D", given.map { "Given today at \(Format.time($0))" } ?? "Not given today", chevron: true)
-            }
-            .buttonStyle(.plain)
-            Button { app.openEntry(.new(kind: .MEDICAL)) } label: {
-                infoRow("Medical", data.latestMedical.map(medicalText) ?? "—", chevron: true)
-            }
-            .buttonStyle(.plain)
-            Button { app.push(.vaccinations) } label: {
-                infoRow("Vaccine", data.latestVaccine.map(vaccineText) ?? "—", chevron: true)
-            }
-            .buttonStyle(.plain)
-        }
-    }
-
-    private func medicalText(_ a: ActivityEntity) -> String {
-        let detail = a.medical?.temperatureC.map { Format.temp($0, prefs.units) } ?? a.medical?.medicationName ?? ""
-        return "\(Format.dayAndTime(a.startTime, now: now))  \(detail)"
-    }
-
-    private func vaccineText(_ a: ActivityEntity) -> String {
-        let n = a.vaccine?.vaccines.count ?? 0
-        return "\(Format.relativeDay(a.startTime, now: now))  \(n == 1 ? "1 vaccine" : "\(n) vaccines")"
     }
 
     private func format(_ metric: GrowthMetric, _ value: Double) -> String {
@@ -307,59 +592,106 @@ struct DashboardCard: View {
         case .HEIGHT, .HEAD: Format.length(value, prefs.units)
         }
     }
+}
 
-    private func feedValue(_ a: ActivityEntity) -> String {
-        switch a.type {
-        case .BOTTLE_FEED: a.bottle?.totalMl.map { Format.volume($0, prefs.units) } ?? ""
-        case .BREASTFEED: a.durationSec.map(Format.duration) ?? ""
-        default: a.label
+extension GrowthMetric {
+    var icon: NestlyIcon {
+        switch self {
+        case .WEIGHT: .weight
+        case .HEIGHT: .height
+        case .HEAD: .child
         }
     }
+}
 
-    private func runningElapsed(_ keys: [TimerKey]) -> Int64? {
-        let states = keys.compactMap { timers[$0] }
-        guard states.contains(where: { !$0.isIdle }) else { return nil }
-        return states.reduce(0) { $0 + $1.elapsedMs(now) } / 1000
-    }
+private struct HealthCard: View {
+    let data: DashboardData
+    let now: EpochMs
+    @Environment(AppModel.self) private var app
+    @Environment(Preferences.self) private var prefs
 
-    private func infoRow(_ title: String, _ value: String, highlight: Bool = false, chevron: Bool = false) -> some View {
-        HStack {
-            Text(title).font(.subheadline.weight(.medium))
-            Spacer()
-            Text(value).font(.subheadline).foregroundStyle(highlight ? card.color : .secondary).monospacedDigit()
-            if chevron { Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary) }
-        }
-        .contentShape(Rectangle())
-    }
-
-    private func empty(_ text: String) -> some View {
-        Text(text).font(.subheadline).foregroundStyle(.secondary)
-    }
-
-    // MARK: Today list
-
-    @ViewBuilder private var todayList: some View {
+    var body: some View {
         let zone = TimeZone.current
-        let start = LocalDate.of(ms: now, zone: zone).startOfDayMs(zone)
-        let rows = ActivityFilters.filter(data.recent.filter { $0.startTime >= start && card.types.contains($0.type) }, prefs.filters)
-            .sorted { $0.startTime > $1.startTime }
-        if !rows.isEmpty {
-            let isExpanded = expanded ?? (card == .FEED)
-            let shown = isExpanded ? rows : Array(rows.prefix(3))
-            let bars = Bars.fractions(rows)
-            Divider()
-            ForEach(shown) { entry in
-                ActivityRow(entry: entry, barFraction: bars[entry.id])
-                    .onTapGesture { app.openEntry(.edit(activityId: entry.id)) }
-            }
-            HStack {
-                if rows.count > 3 {
-                    Button(isExpanded ? "Show Less" : "Show More") { expanded = !isExpanded }
+        let today = LocalDate.of(ms: now, zone: zone)
+        let given = DailyDose.givenAt(data.recent, startOfToday: today.startOfDayMs(zone), startOfTomorrow: today.plusDays(1).startOfDayMs(zone))
+        let givenEntry = given.flatMap { t in data.recent.first { $0.type == .VITAMIN_D && $0.startTime == t } }
+        let tint = CardKind.HEALTH.color
+        VStack(alignment: .leading, spacing: Space.m) {
+            SectionTitle("Health")
+            Card(padding: Space.m) {
+                VStack(spacing: 0) {
+                    Button {
+                        if let givenEntry { app.openEntry(.edit(activityId: givenEntry.id)) } else { app.openEntry(.new(kind: .VITAMIN_D)) }
+                    } label: {
+                        HStack {
+                            IconRow(title: "Vitamin D", icon: .vitaminD, tint: Palette.firsts, subtitle: given.map { "Given today at \(Format.time($0))" } ?? "Not given today", chevron: false)
+                            if given != nil {
+                                Image(systemName: "checkmark.circle.fill").font(.title3).foregroundStyle(Palette.routine)
+                                    .accessibilityLabel("Given")
+                            } else {
+                                StatusPill(text: "Log", systemImage: "plus", tint: Palette.firsts)
+                            }
+                        }
+                        .padding(.vertical, Space.s)
+                    }
+                    .buttonStyle(.pressable)
+                    Divider().padding(.leading, 48)
+                    Button { app.openEntry(.new(kind: .MEDICAL)) } label: {
+                        IconRow(title: "Medical", icon: .thermometer, tint: tint, subtitle: data.latestMedical.map(medicalText) ?? "Temperature and medication")
+                            .padding(.vertical, Space.s)
+                    }
+                    .buttonStyle(.pressable)
+                    Divider().padding(.leading, 48)
+                    Button { app.push(.vaccinations) } label: {
+                        IconRow(title: "Vaccines", icon: .vaccine, tint: tint, subtitle: data.latestVaccine.map(vaccineText) ?? "Schedule and records")
+                            .padding(.vertical, Space.s)
+                    }
+                    .buttonStyle(.pressable)
                 }
-                Spacer()
-                Button("View History") { app.tab = .history }
             }
-            .font(.footnote)
+        }
+    }
+
+    private func medicalText(_ a: ActivityEntity) -> String {
+        let detail = a.medical?.temperatureC.map { Format.temp($0, prefs.units) } ?? a.medical?.medicationName ?? ""
+        return [Format.dayAndTime(a.startTime, now: now), detail].filter { !$0.isEmpty }.joined(separator: " · ")
+    }
+
+    private func vaccineText(_ a: ActivityEntity) -> String {
+        let n = a.vaccine?.vaccines.count ?? 0
+        return "\(Format.relativeDay(a.startTime, now: now)) · \(n == 1 ? "1 vaccine" : "\(n) vaccines")"
+    }
+}
+
+struct SectionTitle: View {
+    let text: String
+    init(_ text: String) { self.text = text }
+
+    var body: some View {
+        Text(text).font(.rounded(.title3, weight: .bold)).accessibilityAddTraits(.isHeader)
+    }
+}
+
+// MARK: - Welcome
+
+struct WelcomeView: View {
+    @Environment(AppModel.self) private var app
+    @State private var adding = false
+
+    var body: some View {
+        EmptyStateView(
+            icon: .stroller,
+            title: "Welcome to Nestly",
+            message: "Track feeds, pumping, diapers, sleep and more. Add your child to get started, or bring your history over from Nara Baby."
+        ) {
+            Button("Add Child") { adding = true }.buttonStyle(.primary)
+            Button("Import from Nara") { app.push(.importExport) }.buttonStyle(.secondary)
+        }
+        .background(Color(.systemGroupedBackground))
+        .sheet(isPresented: $adding) {
+            ChildForm(title: "Add child", askCaregiverName: true) { name, sex, birth, caregiver in
+                try await app.repos.family.addChild(name: name, sex: sex, birthDate: birth, caregiverName: caregiver)
+            }
         }
     }
 }
@@ -379,24 +711,31 @@ struct SummarySheet: View {
             let from = last24 ? now - 86_400_000 : LocalDate.today(zone).startOfDayMs(zone)
             let lines = Summary.summarize(entries, from: from, to: now + 1, prefs: prefs.units)
             List {
-                Picker("Range", selection: $last24) {
+                Picker("Range", selection: $last24.animation(.snappy)) {
                     Text("Today").tag(false)
                     Text("Last 24 Hours").tag(true)
                 }
                 .pickerStyle(.segmented)
                 .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets())
                 if lines.isEmpty {
                     Text("Nothing logged yet.").foregroundStyle(.secondary)
                 }
                 ForEach(lines, id: \.type) { line in
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack {
-                            Label(line.type.displayName, systemImage: line.type.symbol).foregroundStyle(line.type.color)
-                            Spacer()
-                            Text("\(line.count)").font(.headline)
+                    HStack(alignment: .top, spacing: Space.m) {
+                        IconTile(icon: line.type.icon, tint: line.type.color, size: 36)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(line.type.displayName).font(.headline)
+                            ForEach(line.details, id: \.self) { Text($0).font(.subheadline).foregroundStyle(.secondary) }
                         }
-                        ForEach(line.details, id: \.self) { Text($0).font(.subheadline).foregroundStyle(.secondary) }
+                        Spacer()
+                        Text("\(line.count)")
+                            .font(.rounded(.title2, weight: .bold))
+                            .monospacedDigit()
+                            .foregroundStyle(line.type.color)
+                            .contentTransition(.numericText())
                     }
+                    .padding(.vertical, 2)
                 }
             }
             .navigationTitle("Summary")
@@ -404,6 +743,7 @@ struct SummarySheet: View {
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }
         .presentationDetents([.medium, .large])
+        .presentationCornerRadius(Radius.l)
     }
 }
 
@@ -415,11 +755,18 @@ struct FiltersSheet: View {
     var body: some View {
         NavigationStack {
             List(FilterOption.allCases, id: \.self) { option in
-                Toggle(option.label, isOn: Binding(
+                Toggle(isOn: Binding(
                     get: { selection.contains(option) },
                     set: { if $0 { selection.insert(option) } else { selection.remove(option) } }
-                ))
+                )) {
+                    HStack(spacing: Space.m) {
+                        IconTile(icon: option.icon, tint: option.tint, size: 30)
+                        Text(option.label)
+                    }
+                }
+                .tint(Palette.accent)
             }
+            .sensoryFeedback(.selection, trigger: selection)
             .navigationTitle("Filters")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -430,10 +777,40 @@ struct FiltersSheet: View {
                         dismiss()
                     }
                 }
+                ToolbarItem(placement: .bottomBar) {
+                    Button("Clear All") { selection = [] }.disabled(selection.isEmpty)
+                }
             }
         }
         .onAppear { selection = prefs.filters }
         .presentationDetents([.medium, .large])
+    }
+}
+
+extension FilterOption {
+    var icon: NestlyIcon {
+        switch self {
+        case .NOTES: .note
+        case .PHOTOS: .system("photo.fill")
+        case .FEED: CardKind.FEED.icon
+        case .PUMP: CardKind.PUMP.icon
+        case .DIAPER: CardKind.DIAPER.icon
+        case .SLEEP: CardKind.SLEEP.icon
+        case .ROUTINE: CardKind.ROUTINE.icon
+        case .HEALTH: CardKind.HEALTH.icon
+        }
+    }
+
+    var tint: Color {
+        switch self {
+        case .NOTES, .PHOTOS: Palette.accent
+        case .FEED: CardKind.FEED.color
+        case .PUMP: CardKind.PUMP.color
+        case .DIAPER: CardKind.DIAPER.color
+        case .SLEEP: CardKind.SLEEP.color
+        case .ROUTINE: CardKind.ROUTINE.color
+        case .HEALTH: CardKind.HEALTH.color
+        }
     }
 }
 
@@ -450,11 +827,19 @@ struct EditActivitiesView: View {
 
     var body: some View {
         List {
-            Section("Reorder") {
+            Section {
                 ForEach(order, id: \.self) { card in
-                    Label(card.title, systemImage: card.symbol).foregroundStyle(ActivityToggle.isCardVisible(card, disabled: disabled) ? .primary : .secondary)
+                    let visible = ActivityToggle.isCardVisible(card, disabled: disabled)
+                    HStack(spacing: Space.m) {
+                        IconTile(icon: card.icon, tint: visible ? card.color : .secondary, size: 30)
+                        Text(card.title).foregroundStyle(visible ? .primary : .secondary)
+                    }
                 }
                 .onMove { order.move(fromOffsets: $0, toOffset: $1) }
+            } header: {
+                Text("Order")
+            } footer: {
+                Text("Drag to change the order of tiles and cards on the Activity tab.")
             }
             ForEach(Self.groups, id: \.0) { group in
                 Section(group.0) {
@@ -463,12 +848,14 @@ struct EditActivitiesView: View {
                             get: { !disabled.contains(toggle) },
                             set: { if $0 { disabled.remove(toggle) } else { disabled.insert(toggle) } }
                         ))
+                        .tint(Palette.accent)
                         .padding(.leading, isSub ? 24 : 0)
                         .disabled(isSub && disabled.contains(.BOTTLE_FEEDING))
                     }
                 }
             }
         }
+        .sensoryFeedback(.selection, trigger: disabled)
         .environment(\.editMode, .constant(.active))
         .navigationTitle("Edit Activities")
         .toolbar {
@@ -476,6 +863,7 @@ struct EditActivitiesView: View {
                 Button("Save") {
                     prefs.setCardOrder(order)
                     prefs.setDisabledToggles(disabled)
+                    Haptics.success()
                     dismiss()
                 }
             }

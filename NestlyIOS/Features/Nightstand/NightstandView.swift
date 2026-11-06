@@ -11,9 +11,12 @@ struct NightstandView: View {
     @State private var busy = false
     @State private var offset = CGSize.zero
     @State private var pulse = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private static let amber = Color(red: 1, green: 0.72, blue: 0.3)
-    private static let red = Color(red: 1, green: 0.38, blue: 0.38)
+    /// Dimmed so the screen stays easy on dark-adapted eyes.
+    private static let accent = Palette.accent.opacity(0.85)
+    private static let amber = Palette.warning.opacity(0.9)
+    private static let red = Palette.critical.opacity(0.9)
 
     var body: some View {
         Clock(interval: 30) { now in
@@ -46,68 +49,93 @@ struct NightstandView: View {
 
     @ViewBuilder
     private func content(_ now: EpochMs) -> some View {
-        VStack(spacing: 22) {
+        VStack(spacing: Space.xl) {
+            Spacer(minLength: 0)
             switch snapshot {
             case nil:
                 ProgressView().tint(.white)
-            case .notSignedIn:
-                Text("Open Nestly to set up your family").font(.title3)
-            case .noChild:
-                Text("Open Nestly to set up your family").font(.title3)
+            case .notSignedIn, .noChild:
+                Text("Open Nestly to set up your family").font(.rounded(.title3, weight: .medium))
             case .unavailable:
-                Text("Couldn't reach Nestly. Retrying…").font(.title3)
+                Text("Couldn't reach Nestly. Retrying…").font(.rounded(.title3, weight: .medium))
             case let .ready(s):
                 ready(s, now)
             }
             if let result {
-                Text(result).font(.callout).multilineTextAlignment(.center).padding(.horizontal)
+                Text(result)
+                    .font(.callout)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, Space.l)
+                    .padding(.vertical, Space.m)
+                    .background(Color(white: 0.1), in: Capsule())
+                    .transition(.opacity)
             }
-            HStack(spacing: 16) {
+            Spacer(minLength: 0)
+            HStack(spacing: Space.m) {
                 Button { Task { await logFeed() } } label: {
-                    Text(busy ? "SAVING…" : "LOG FEED").font(.title3.weight(.bold)).frame(maxWidth: .infinity, minHeight: 64)
+                    Label(busy ? "Saving…" : "Log Feed", systemImage: "plus")
+                        .font(.rounded(.title3, weight: .semibold))
+                        .foregroundStyle(Self.accent)
+                        .frame(maxWidth: .infinity, minHeight: 64)
+                        .background(Palette.accent.opacity(0.16), in: RoundedRectangle(cornerRadius: Radius.l, style: .continuous))
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(Color(white: 0.22))
+                .buttonStyle(.pressable)
                 .disabled(busy)
                 Button { close() } label: {
-                    Text("CLOSE").font(.title3.weight(.semibold)).frame(maxWidth: 140, minHeight: 64)
+                    Text("Close")
+                        .font(.rounded(.title3, weight: .medium))
+                        .frame(width: 120, height: 64)
+                        .background(Color(white: 0.1), in: RoundedRectangle(cornerRadius: Radius.l, style: .continuous))
                 }
-                .buttonStyle(.bordered)
-                .tint(Color(white: 0.5))
+                .buttonStyle(.pressable)
             }
-            .padding(.horizontal, 24)
+            .padding(.horizontal, Space.xl)
         }
-        .padding(.vertical, 24)
+        .padding(.vertical, Space.xl)
+        .animation(.snappy, value: result)
     }
 
     @ViewBuilder
     private func ready(_ s: FeedSnapshot, _ now: EpochMs) -> some View {
-        VStack(spacing: 4) {
-            Text(s.childName).font(.title2.weight(.semibold))
-            Text(Format.headerDate(now)).font(.subheadline).foregroundStyle(.secondary)
+        VStack(spacing: Space.xs) {
+            Text(s.childName).font(.rounded(.title2, weight: .semibold))
+            Text(Format.headerDate(now)).font(.subheadline).foregroundStyle(Color(white: 0.5))
         }
-        VStack(spacing: 6) {
-            Text("NEXT FEED").font(.caption.weight(.bold)).tracking(2).foregroundStyle(.secondary)
+        VStack(spacing: Space.s) {
+            Text("Next feed").font(.subheadline.weight(.medium)).foregroundStyle(Color(white: 0.5))
             switch s.state(now: now) {
             case .noFeed:
-                Text("No feeds logged yet — tap LOG FEED").font(.title3)
+                Text("No feeds logged yet").font(.rounded(.title3, weight: .medium))
             case let .upcoming(due, remaining):
-                Text(Format.time(due)).font(.system(size: 64, weight: .light, design: .rounded))
-                Text("IN \(Format.durationShort(remaining, roundUp: true))").font(.title3.weight(.semibold)).foregroundStyle(Self.amber)
+                hero(due)
+                Text("in \(Format.durationShort(remaining, roundUp: true))").font(.rounded(.title3, weight: .semibold)).foregroundStyle(Self.amber)
             case let .dueNow(due):
-                Text(Format.time(due)).font(.system(size: 64, weight: .light, design: .rounded))
-                Text("NOW").font(.title3.weight(.bold)).foregroundStyle(Self.amber)
+                hero(due)
+                Text("Due now").font(.rounded(.title3, weight: .semibold)).foregroundStyle(Self.amber)
             case let .overdue(due, overdue):
-                Text(Format.time(due)).font(.system(size: 64, weight: .light, design: .rounded))
-                Text("OVERDUE BY \(Format.durationShort(overdue, roundUp: false))").font(.title3.weight(.bold)).foregroundStyle(Self.red)
+                hero(due)
+                Text("Overdue by \(Format.durationShort(overdue, roundUp: false))").font(.rounded(.title3, weight: .semibold)).foregroundStyle(Self.red)
             }
         }
-        if let last = s.lastFeed {
-            let detail = last.detailText(app.prefs.units).map { " · \($0)" } ?? ""
-            Text("Last feed \(Format.time(last.startTime)) · \(last.label)\(detail)").font(.callout).foregroundStyle(.secondary)
+        VStack(spacing: Space.s) {
+            if let last = s.lastFeed {
+                let detail = last.detailText(app.prefs.units).map { " · \($0)" } ?? ""
+                Text("Last feed \(Format.time(last.startTime)) · \(last.label)\(detail)")
+            }
+            Text(todayLine(s))
         }
-        Text(todayLine(s)).font(.callout).foregroundStyle(.secondary)
+        .font(.callout)
+        .foregroundStyle(Color(white: 0.55))
+        .multilineTextAlignment(.center)
         vitaminD(s)
+    }
+
+    private func hero(_ due: EpochMs) -> some View {
+        Text(Format.time(due))
+            .font(.system(size: 76, weight: .light, design: .rounded))
+            .monospacedDigit()
+            .minimumScaleFactor(0.6)
+            .lineLimit(1)
     }
 
     private func todayLine(_ s: FeedSnapshot) -> String {
@@ -120,19 +148,29 @@ struct NightstandView: View {
     @ViewBuilder
     private func vitaminD(_ s: FeedSnapshot) -> some View {
         if let given = s.vitaminDGivenAt {
-            Text("VITAMIN D GIVEN at \(Format.time(given))").font(.footnote.weight(.semibold)).foregroundStyle(.secondary)
+            Label("Vitamin D given at \(Format.time(given))", systemImage: "checkmark.circle.fill")
+                .font(.footnote.weight(.medium))
+                .foregroundStyle(Color(white: 0.5))
         } else {
             Button { Task { await logVitaminD() } } label: {
-                VStack(spacing: 2) {
-                    Text("VITAMIN D DUE").font(.footnote.weight(.bold))
-                    Text("tap when given").font(.caption2)
+                HStack(spacing: Space.s) {
+                    NestlyIcon.vitaminD.image.resizable().scaledToFit().frame(width: 18, height: 18)
+                    Text("Vitamin D due")
+                        .font(.subheadline.weight(.semibold))
+                    Text("· Tap when given").font(.subheadline)
+                        .foregroundStyle(Color(white: 0.5))
                 }
-                .foregroundStyle(Self.red)
-                .opacity(pulse ? 0.45 : 1)
+                .foregroundStyle(Self.amber)
+                .padding(.horizontal, Space.l)
+                .frame(minHeight: 44)
+                .background(Palette.warning.opacity(0.12), in: Capsule())
+                .opacity(pulse ? 0.55 : 1)
             }
+            .buttonStyle(.pressable)
             .disabled(busy)
             .onAppear {
-                withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) { pulse = true }
+                guard !reduceMotion else { return }
+                withAnimation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true)) { pulse = true }
             }
         }
     }
@@ -141,6 +179,7 @@ struct NightstandView: View {
         busy = true
         defer { busy = false }
         let r = await QuickBottleLog.run(repos: app.repos)
+        Haptics.success()
         show(r.nightstandMessage(app.prefs.units))
         snapshot = await FeedSnapshotLoader.load(repos: app.repos)
     }
@@ -149,6 +188,7 @@ struct NightstandView: View {
         busy = true
         defer { busy = false }
         let r = await QuickVitaminDLog.run(repos: app.repos)
+        Haptics.success()
         show(r.message())
         snapshot = await FeedSnapshotLoader.load(repos: app.repos)
     }

@@ -18,7 +18,7 @@ struct RootView: View {
                         .onTapGesture { app.toast = nil }
                 }
             }
-            .animation(.easeInOut, value: app.toast)
+            .animation(.snappy, value: app.toast)
             .sheet(item: $app.entryRequest) { request in
                 EntrySheet(request: request)
                     .environment(app)
@@ -120,17 +120,28 @@ struct ErrorBanner: View {
 
     var body: some View {
         if let message = errors.message {
-            HStack(spacing: 12) {
+            HStack(spacing: Space.m) {
                 Image(systemName: "wifi.exclamationmark")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Palette.critical)
                 Text(message).font(.footnote).frame(maxWidth: .infinity, alignment: .leading)
-                Button("Retry") { app.repos.backend.bus.bumpAll() }.font(.footnote.bold())
-                Button { errors.clear() } label: { Image(systemName: "xmark") }
-                    .accessibilityLabel("Dismiss")
+                Button("Retry") { app.repos.backend.bus.bumpAll() }
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Palette.critical)
+                Button { errors.clear() } label: {
+                    Image(systemName: "xmark").font(.caption.weight(.bold)).foregroundStyle(.secondary)
+                        .frame(width: 28, height: 28)
+                        .contentShape(Rectangle())
+                }
+                .accessibilityLabel("Dismiss")
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .foregroundStyle(.white)
-            .background(Color.red.opacity(0.9))
+            .padding(.leading, Space.l)
+            .padding(.trailing, Space.s)
+            .padding(.vertical, Space.s)
+            .background(Palette.critical.opacity(0.12), in: RoundedRectangle(cornerRadius: Radius.s, style: .continuous))
+            .padding(.horizontal, Space.l)
+            .padding(.bottom, Space.xs)
+            .transition(.move(edge: .top).combined(with: .opacity))
         }
     }
 }
@@ -139,11 +150,12 @@ struct LoadingView: View {
     let text: String
 
     var body: some View {
-        VStack(spacing: 12) {
-            ProgressView()
-            Text(text).foregroundStyle(.secondary)
+        VStack(spacing: Space.m) {
+            ProgressView().controlSize(.large)
+            Text(text).font(.subheadline).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(.systemGroupedBackground))
     }
 }
 
@@ -152,13 +164,11 @@ struct ErrorScreen: View {
     let retry: () -> Void
 
     var body: some View {
-        VStack(spacing: 16) {
-            Text("Couldn't reach Nestly").font(.title2.bold())
-            Text(message).multilineTextAlignment(.center).foregroundStyle(.secondary)
-            Button("Retry", action: retry).buttonStyle(.borderedProminent)
+        EmptyStateView(icon: .system("wifi.exclamationmark"), tint: Palette.critical, title: "Couldn't reach Nestly", message: message) {
+            Button("Try Again", action: retry).buttonStyle(.primary)
         }
-        .padding(32)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(.systemGroupedBackground))
     }
 }
 
@@ -166,13 +176,16 @@ struct ToastView: View {
     let text: String
 
     var body: some View {
-        Text(text)
-            .font(.subheadline)
-            .multilineTextAlignment(.center)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background(.thinMaterial, in: Capsule())
-            .shadow(radius: 4)
-            .padding(.horizontal, 24)
+        HStack(spacing: Space.s) {
+            Image(systemName: "checkmark.circle.fill").foregroundStyle(Palette.accent)
+            Text(text).multilineTextAlignment(.leading)
+        }
+        .font(.subheadline.weight(.medium))
+        .padding(.horizontal, Space.l)
+        .padding(.vertical, Space.m)
+        .background(.regularMaterial, in: Capsule())
+        .overlay(Capsule().strokeBorder(Color(.separator).opacity(0.5), lineWidth: 0.5))
+        .padding(.horizontal, Space.xl)
+        .accessibilityElement(children: .combine)
     }
 }

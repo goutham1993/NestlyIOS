@@ -18,6 +18,7 @@ struct NestlyApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
+                .tint(Palette.accent)
                 .environment(app)
                 .environment(app.family)
                 .environment(app.prefs)

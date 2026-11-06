@@ -42,33 +42,40 @@ struct ActivityRow: View {
     @Environment(Preferences.self) private var prefs
 
     var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: entry.type.symbol)
-                .foregroundStyle(entry.type.color)
-                .frame(width: 22)
+        HStack(spacing: Space.m) {
+            IconTile(icon: entry.type.icon, tint: entry.type.color, size: 34)
             VStack(alignment: .leading, spacing: 2) {
-                Text(showDay ? Format.dayAndTime(entry.startTime, now: now) : Format.time(entry.startTime))
-                    .font(.caption).foregroundStyle(.secondary)
                 Text(entry.label.isEmpty ? entry.type.displayName : entry.label)
-                    .font(.subheadline.weight(.medium))
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+                HStack(spacing: 6) {
+                    Text(showDay ? Format.dayAndTime(entry.startTime, now: now) : Format.time(entry.startTime))
+                    if entry.hasNote { Image(systemName: "note.text").accessibilityLabel("Has note") }
+                    if entry.hasPhoto { Image(systemName: "photo").accessibilityLabel("Has photo") }
+                }
+                .font(.caption).foregroundStyle(.secondary)
             }
-            .frame(minWidth: 90, alignment: .leading)
+            .frame(minWidth: 96, alignment: .leading)
             if let barFraction {
                 GeometryReader { geo in
-                    Capsule().fill(entry.type.color.opacity(0.75))
-                        .frame(width: max(geo.size.width * 0.08, geo.size.width * barFraction), height: 8)
-                        .frame(maxHeight: .infinity, alignment: .center)
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(entry.type.color.opacity(0.12))
+                        Capsule().fill(entry.type.color.opacity(0.8))
+                            .frame(width: max(geo.size.width * 0.08, geo.size.width * barFraction))
+                    }
+                    .frame(height: 6)
+                    .frame(maxHeight: .infinity, alignment: .center)
                 }
                 .frame(height: 20)
+                .accessibilityHidden(true)
             } else {
                 Spacer(minLength: 0)
             }
             if let detail = entry.detailText(prefs.units), !detail.isEmpty {
-                Text(detail).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+                Text(detail).font(.subheadline.weight(.medium)).foregroundStyle(.secondary).monospacedDigit().lineLimit(1)
             }
-            if entry.hasNote { Image(systemName: "note.text").font(.caption).foregroundStyle(.secondary) }
-            if entry.hasPhoto { Image(systemName: "photo").font(.caption).foregroundStyle(.secondary) }
         }
+        .padding(.vertical, 2)
         .contentShape(Rectangle())
     }
 }
@@ -84,17 +91,6 @@ enum Bars {
             if let v = e.barValue, let m = maxByKey[key(e)], m > 0 { out[e.id] = v / m }
         }
         return out
-    }
-}
-
-struct SectionCard<Content: View>: View {
-    @ViewBuilder let content: Content
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) { content }
-            .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16))
     }
 }
 
@@ -201,7 +197,7 @@ struct DurationEditor: View {
 
     private func wheel(_ value: Binding<Int>, _ range: Range<Int>, _ suffix: String) -> some View {
         Picker(suffix, selection: value) {
-            ForEach(range, id: \.self) { Text("\($0)\(suffix)").tag($0) }
+            ForEach(range, id: \.self) { Text("\($0) \(suffix)").font(.rounded(.title3, weight: .medium)).monospacedDigit().tag($0) }
         }
         .pickerStyle(.wheel)
         .frame(maxWidth: .infinity)
@@ -214,27 +210,36 @@ struct ChipFlow<Item: Hashable>: View {
     let label: (Item) -> String
     let isSelected: (Item) -> Bool
     var swatch: ((Item) -> Color)?
+    var tint: Color = Palette.accent
     let toggle: (Item) -> Void
+    @State private var tapCount = 0
 
     var body: some View {
-        FlowLayout(spacing: 8) {
+        FlowLayout(spacing: Space.s) {
             ForEach(items, id: \.self) { item in
-                Button { toggle(item) } label: {
+                let selected = isSelected(item)
+                Button {
+                    tapCount += 1
+                    withAnimation(.snappy) { toggle(item) }
+                } label: {
                     HStack(spacing: 6) {
                         if let swatch {
-                            Circle().fill(swatch(item)).frame(width: 12, height: 12)
-                                .overlay(Circle().stroke(.secondary.opacity(0.4)))
+                            Circle().fill(swatch(item)).frame(width: 16, height: 16)
+                                .overlay(Circle().strokeBorder(Color.primary.opacity(0.15)))
                         }
-                        Text(label(item)).font(.subheadline)
+                        Text(label(item)).font(.subheadline.weight(selected ? .semibold : .regular))
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 7)
-                    .background(isSelected(item) ? Color.accentColor.opacity(0.18) : Color(.tertiarySystemFill), in: Capsule())
-                    .overlay(Capsule().stroke(isSelected(item) ? Color.accentColor : .clear, lineWidth: 1.5))
+                    .foregroundStyle(selected ? tint : .primary)
+                    .padding(.horizontal, 14)
+                    .frame(minHeight: 36)
+                    .background(selected ? tint.opacity(0.16) : Color(.tertiarySystemFill), in: Capsule())
+                    .contentShape(Capsule())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.pressable)
+                .accessibilityAddTraits(selected ? .isSelected : [])
             }
         }
+        .sensoryFeedback(.selection, trigger: tapCount)
     }
 }
 
@@ -338,21 +343,43 @@ struct ChildForm: View {
     var body: some View {
         NavigationStack {
             Form {
-                TextField("First Name", text: $name).textContentType(.givenName)
-                Picker("Sex", selection: $sex) {
-                    Text("Boy").tag(Sex?.some(.MALE))
-                    Text("Girl").tag(Sex?.some(.FEMALE))
-                    if sex == .OTHER { Text("Other").tag(Sex?.some(.OTHER)) }
+                Section {
+                    VStack(spacing: Space.m) {
+                        ChildAvatar(name: name, size: 72)
+                        Text(name.isBlank ? "Your little one" : name)
+                            .font(.rounded(.title3, weight: .bold))
+                            .foregroundStyle(name.isBlank ? .secondary : .primary)
+                            .contentTransition(.opacity)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, Space.s)
+                    .listRowBackground(Color.clear)
                 }
-                .pickerStyle(.segmented)
-                Toggle("Birthdate", isOn: $hasBirthDate)
-                if hasBirthDate {
-                    DatePicker("Birthdate", selection: $birthDate, in: ...Date().addingTimeInterval(270 * 86400), displayedComponents: .date)
+                Section {
+                    TextField("First Name", text: $name).textContentType(.givenName)
+                    Picker("Sex", selection: $sex) {
+                        Text("Boy").tag(Sex?.some(.MALE))
+                        Text("Girl").tag(Sex?.some(.FEMALE))
+                        if sex == .OTHER { Text("Other").tag(Sex?.some(.OTHER)) }
+                    }
+                    .pickerStyle(.segmented)
+                }
+                Section {
+                    Toggle("Birthdate", isOn: $hasBirthDate.animation(.snappy))
+                    if hasBirthDate {
+                        DatePicker("Birthdate", selection: $birthDate, in: ...Date().addingTimeInterval(270 * 86400), displayedComponents: .date)
+                    }
                 }
                 if askCaregiverName {
-                    TextField("Your Name", text: $caregiverName).textContentType(.name)
+                    Section {
+                        TextField("Your Name", text: $caregiverName).textContentType(.name)
+                    } footer: {
+                        Text("Shown to other caregivers next to the entries you log.")
+                    }
                 }
-                if let error { Text(error).foregroundStyle(.red).font(.footnote) }
+                if let error {
+                    Section { Label(error, systemImage: "exclamationmark.triangle.fill").foregroundStyle(Palette.critical).font(.footnote) }
+                }
             }
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
@@ -380,6 +407,7 @@ struct ChildForm: View {
         Task {
             do {
                 try await onSave(name, sex, birth, caregiverName)
+                Haptics.success()
                 dismiss()
             } catch {
                 self.error = (error as? ConflictError)?.errorDescription ?? "Couldn't save. Check your connection and try again."

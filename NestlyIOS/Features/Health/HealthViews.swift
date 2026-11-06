@@ -22,30 +22,51 @@ struct MilestonesView: View {
                             Button {
                                 if let entry { app.openEntry(.edit(activityId: entry.id)) } else { app.openEntry(.new(kind: .MILESTONE, milestone: item)) }
                             } label: {
-                                HStack {
+                                HStack(spacing: Space.m) {
                                     Image(systemName: entry == nil ? "circle" : "checkmark.circle.fill")
-                                        .foregroundStyle(entry == nil ? Color.secondary : CardKind.GROWTH.color)
-                                    Text(item.title).foregroundStyle(.primary)
+                                        .font(.title3)
+                                        .foregroundStyle(entry == nil ? Color(.tertiaryLabel) : tint)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(item.title).foregroundStyle(Color.primary)
+                                        if let entry {
+                                            Text(Format.date(LocalDate.of(ms: entry.startTime))).font(.footnote).foregroundStyle(.secondary)
+                                        }
+                                    }
                                     Spacer()
-                                    Text(entry.map { Format.date(LocalDate.of(ms: $0.startTime)) } ?? "Log milestone")
-                                        .font(.caption).foregroundStyle(.secondary)
+                                    if entry == nil {
+                                        Text("Log").font(.subheadline.weight(.medium)).foregroundStyle(tint)
+                                    }
                                 }
+                                .foregroundStyle(Color.primary)
                             }
+                            .accessibilityValue(entry == nil ? "Not yet" : "Done")
                         }
                     }
                 } header: {
                     Button {
                         var set = expanded ?? defaultExpanded(profile)
                         if set.contains(group.label) { set.remove(group.label) } else { set.insert(group.label) }
-                        expanded = set
+                        withAnimation(.snappy) { expanded = set }
                     } label: {
-                        HStack {
-                            Text(group.label)
-                            Spacer()
-                            Text("\(count)/\(group.items.count)")
-                            Image(systemName: isExpanded(group) ? "chevron.up" : "chevron.down")
+                        VStack(alignment: .leading, spacing: Space.s) {
+                            HStack {
+                                Text(group.label).font(.rounded(.headline)).foregroundStyle(Color.primary)
+                                Spacer()
+                                Text("\(count) of \(group.items.count)").font(.subheadline).monospacedDigit().foregroundStyle(.secondary)
+                                Image(systemName: "chevron.down")
+                                    .font(.footnote.weight(.semibold))
+                                    .foregroundStyle(.tertiary)
+                                    .rotationEffect(.degrees(isExpanded(group) ? 180 : 0))
+                            }
+                            ProgressView(value: Double(count), total: Double(max(group.items.count, 1)))
+                                .tint(tint)
                         }
+                        .foregroundStyle(Color.primary)
+                        .textCase(nil)
+                        .padding(.top, Space.s)
                     }
+                    .sensoryFeedback(.selection, trigger: isExpanded(group))
+                    .accessibilityValue(isExpanded(group) ? "Expanded" : "Collapsed")
                 }
             }
         }
@@ -55,6 +76,8 @@ struct MilestonesView: View {
             return try await Repositories.shared.activities.ofTypes(familyId: profile.familyId, profileId: profile.id, [.MILESTONE])
         }
     }
+
+    private var tint: Color { EntryKind.MILESTONE.color }
 
     private func isExpanded(_ group: MilestoneGroup) -> Bool {
         (expanded ?? defaultExpanded(family.selectedProfile)).contains(group.label)
@@ -96,13 +119,14 @@ struct VaccinationsView: View {
             if let entries, let profile {
                 content(entries, profile)
             } else {
-                Text("Loading…").foregroundStyle(.secondary)
+                HStack(spacing: Space.m) { ProgressView(); Text("Loading…").foregroundStyle(.secondary) }
             }
         }
         .navigationTitle("Vaccinations")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Add") { app.openEntry(.new(kind: .VACCINE)) }
+                Button { app.openEntry(.new(kind: .VACCINE)) } label: { Image(systemName: "plus") }
+                    .accessibilityLabel("Add vaccination")
             }
         }
         .live([.activity, .profile], id: profile?.id ?? "", into: $entries) { [profile] in
@@ -122,13 +146,26 @@ struct VaccinationsView: View {
             }
         }
         Section {
-            Text("\(given) of \(counted.count) scheduled doses given").font(.headline)
+            VStack(alignment: .leading, spacing: Space.m) {
+                HStack(spacing: Space.m) {
+                    IconTile(icon: .vaccine, tint: Self.tint, size: 44)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("\(given) of \(counted.count)").font(.rounded(.title2, weight: .bold)).monospacedDigit()
+                        Text("scheduled doses given").font(.subheadline).foregroundStyle(.secondary)
+                    }
+                }
+                ProgressView(value: Double(given), total: Double(max(counted.count, 1))).tint(Self.tint)
+            }
+            .padding(.vertical, Space.xs)
+            .accessibilityElement(children: .combine)
             if entries.isEmpty {
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: Space.s) {
                     Text("No vaccines logged yet").font(.subheadline.weight(.semibold))
                     Text("Log the vaccines \(profile.name) has already had and Nestly will track what's due next.")
                         .font(.subheadline).foregroundStyle(.secondary)
-                    Button("Add vaccination") { app.openEntry(.new(kind: .VACCINE)) }
+                    Button { app.openEntry(.new(kind: .VACCINE)) } label: { Label("Add Vaccination", systemImage: "plus") }
+                        .font(.subheadline.weight(.semibold))
+                        .padding(.top, Space.xs)
                 }
             }
         }
@@ -180,18 +217,34 @@ struct VaccinationsView: View {
         Button {
             if let id = status.givenEntryId { app.openEntry(.edit(activityId: id)) } else { app.openEntry(.new(kind: .VACCINE, vaccines: [status.dose.vaccineName])) }
         } label: {
-            HStack(alignment: .top, spacing: 10) {
-                Circle().fill(stateColor(status.state)).frame(width: 10, height: 10).padding(.top, 5)
+            HStack(alignment: .top, spacing: Space.m) {
+                Image(systemName: stateSymbol(status.state))
+                    .font(.title3)
+                    .foregroundStyle(stateColor(status.state))
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("\(status.dose.vaccineName) — dose \(status.dose.doseNumber)").foregroundStyle(.primary)
-                    Text(subtitle(status)).font(.caption).foregroundStyle(.secondary)
-                    if let note = status.dose.note { Text(note).font(.caption2).foregroundStyle(.secondary) }
+                    Text("\(status.dose.vaccineName) · Dose \(status.dose.doseNumber)").foregroundStyle(Color.primary)
+                    Text(subtitle(status)).font(.footnote).foregroundStyle(.secondary)
+                    if let note = status.dose.note { Text(note).font(.caption).foregroundStyle(.secondary) }
                 }
-                Spacer()
-                Text(stateLabel(status.state)).font(.caption.weight(.semibold)).foregroundStyle(stateColor(status.state))
+                Spacer(minLength: Space.s)
+                if status.state != .UPCOMING {
+                    StatusPill(text: stateLabel(status.state), tint: stateColor(status.state))
+                }
             }
+            .foregroundStyle(Color.primary)
         }
     }
+
+    private func stateSymbol(_ state: DoseState) -> String {
+        switch state {
+        case .GIVEN: "checkmark.circle.fill"
+        case .OVERDUE: "exclamationmark.circle.fill"
+        case .DUE: "clock.fill"
+        case .UPCOMING: "circle"
+        }
+    }
+
+    private static var tint: Color { EntryKind.VACCINE.color }
 
     private func subtitle(_ s: DoseStatus) -> String {
         switch s.state {
@@ -213,10 +266,10 @@ struct VaccinationsView: View {
 
     private func stateColor(_ state: DoseState) -> Color {
         switch state {
-        case .GIVEN: .green
-        case .OVERDUE: .red
-        case .DUE: .orange
-        case .UPCOMING: .secondary
+        case .GIVEN: Self.tint
+        case .OVERDUE: Palette.critical
+        case .DUE: Palette.warning
+        case .UPCOMING: Color(.tertiaryLabel)
         }
     }
 }
@@ -235,25 +288,40 @@ struct RemindersView: View {
         let caregiverId = family.currentCaregiver?.id
         List {
             Section {
-                Text("Get an alert after a set time since the last activity of each type.").foregroundStyle(.secondary)
-            }
-            if let reminders {
-                ForEach(reminders) { reminder in
-                    let label = ReminderLogic.label(reminder.kind)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Toggle(label, isOn: Binding(get: { reminder.enabled }, set: { setEnabled(reminder, $0) }))
-                        Button("Every \(Format.duration(Int64(reminder.intervalMinutes) * 60)) after last \(label.lowercased())") {
-                            editing = reminder
+                if let reminders {
+                    ForEach(reminders) { reminder in
+                        let label = ReminderLogic.label(reminder.kind)
+                        let card = Self.card(reminder.kind)
+                        VStack(alignment: .leading, spacing: Space.s) {
+                            Toggle(isOn: Binding(get: { reminder.enabled }, set: { setEnabled(reminder, $0) })) {
+                                HStack(spacing: Space.m) {
+                                    IconTile(icon: card.icon, tint: card.color, size: 32)
+                                    Text(label)
+                                }
+                            }
+                            .tint(card.color)
+                            Button { editing = reminder } label: {
+                                HStack(spacing: Space.xs) {
+                                    Text("Every \(Format.duration(Int64(reminder.intervalMinutes) * 60)) after last \(label.lowercased())")
+                                    Image(systemName: "chevron.right").font(.caption2.weight(.bold))
+                                }
+                                .font(.subheadline)
+                                .foregroundStyle(reminder.enabled ? card.color : .secondary)
+                            }
+                            .buttonStyle(.borderless)
+                            .padding(.leading, 32 + Space.m)
                         }
-                        .font(.subheadline)
+                        .padding(.vertical, Space.xs)
                     }
+                } else {
+                    HStack(spacing: Space.m) { ProgressView(); Text("Loading…").foregroundStyle(.secondary) }
                 }
-            } else if caregiverId == nil {
-                Text("Loading…").foregroundStyle(.secondary)
-            } else {
-                ProgressView()
+            } footer: {
+                Text("Get an alert after a set time since the last activity of each type.")
             }
-            if let message { Text(message).font(.footnote).foregroundStyle(.red) }
+            if let message {
+                Section { Text(message).font(.footnote).foregroundStyle(Palette.critical) }
+            }
         }
         .navigationTitle("Reminders")
         .sheet(item: $editing) { reminder in
@@ -268,6 +336,15 @@ struct RemindersView: View {
                 rows.append(try await Repositories.shared.reminders.getOrCreate(familyId: profile.familyId, caregiverId: caregiverId, profileId: profile.id, kind: kind))
             }
             return rows
+        }
+    }
+
+    private static func card(_ kind: ReminderKind) -> CardKind {
+        switch kind {
+        case .FEED: .FEED
+        case .PUMP: .PUMP
+        case .DIAPER: .DIAPER
+        case .SLEEP: .SLEEP
         }
     }
 

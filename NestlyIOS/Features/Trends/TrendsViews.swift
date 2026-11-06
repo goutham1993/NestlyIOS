@@ -45,25 +45,34 @@ struct TrendsTab: View {
 
     var body: some View {
         List {
-            Picker("Window", selection: $window) {
+            Picker("Window", selection: $window.animation(.snappy)) {
                 ForEach(TrendsWindow.allCases) { Text($0.label).tag($0) }
             }
             .pickerStyle(.segmented)
             .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets())
             if let entries {
                 ForEach(Self.sections, id: \.self) { section in
-                    Section(section.title) {
+                    Section {
                         ForEach(TrendMetric.allCases.filter { $0.section == section }) { metric in
                             let row = TrendRow.compute(metric, entries, window: window)
                             Button { app.push(.trend(metric, window)) } label: { TrendRowView(row: row, window: window) }
-                                .foregroundStyle(.primary)
+                                .foregroundStyle(Color.primary)
                         }
+                    } header: {
+                        HStack(spacing: Space.s) {
+                            IconTile(icon: section.icon, tint: section.color, size: 26)
+                            Text(section.title).font(.rounded(.headline)).foregroundStyle(Color.primary)
+                        }
+                        .textCase(nil)
+                        .padding(.bottom, 2)
                     }
                 }
             } else {
                 ProgressView().frame(maxWidth: .infinity)
             }
         }
+        .sensoryFeedback(.selection, trigger: window)
         .navigationTitle("Trends")
         .live([.activity], id: "\(family.selectedProfile?.id ?? "")-\(window)", into: $entries) { [profile = family.selectedProfile, window] in
             guard let profile else { return [] }
@@ -80,23 +89,24 @@ struct TrendRowView: View {
 
     var body: some View {
         let metric = row.current.metric
-        HStack {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(metric.title).font(.subheadline.weight(.semibold))
+        HStack(spacing: Space.m) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(metric.title).font(.subheadline.weight(.medium)).foregroundStyle(.secondary)
                 Text(row.current.sampleCount > 0 ? metric.summary(row.current.value, prefs.units) : "—")
-                    .font(.subheadline).foregroundStyle(.secondary)
+                    .font(.rounded(.title3, weight: .bold))
+                    .monospacedDigit()
+                    .contentTransition(.numericText())
                 if let text = row.comparison(window) {
                     Text(text).font(.caption).foregroundStyle(.secondary)
                 }
             }
             Spacer()
             if let delta = row.delta, metric.isMeaningful(delta) {
-                Label(delta > 0 ? "Up" : "Down", systemImage: delta > 0 ? "arrow.up.right" : "arrow.down.right")
-                    .labelStyle(.iconOnly)
-                    .foregroundStyle(metric.section.color)
+                StatusPill(text: delta > 0 ? "Up" : "Down", systemImage: delta > 0 ? "arrow.up.right" : "arrow.down.right")
             }
-            Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
+            Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.tertiary)
         }
+        .padding(.vertical, 2)
     }
 }
 
@@ -119,14 +129,17 @@ struct TrendDetailView: View {
         let row = entries.map { TrendRow.compute(metric, $0, window: window, periodsBack: periodsBack) }
         List {
             HStack {
-                Button { periodsBack += 1 } label: { Image(systemName: "chevron.left") }.accessibilityLabel("Previous period")
+                Button { withAnimation(.snappy) { periodsBack += 1 } } label: { periodChevron("chevron.left") }
+                    .accessibilityLabel("Previous period")
                 Spacer()
-                Text(rangeText(row)).font(.headline)
+                Text(rangeText(row)).font(.rounded(.headline)).contentTransition(.opacity)
                 Spacer()
-                Button { periodsBack -= 1 } label: { Image(systemName: "chevron.right") }.disabled(periodsBack == 0)
+                Button { withAnimation(.snappy) { periodsBack -= 1 } } label: { periodChevron("chevron.right") }
+                    .disabled(periodsBack == 0)
                     .accessibilityLabel("Next period")
             }
             .buttonStyle(.borderless)
+            .sensoryFeedback(.selection, trigger: periodsBack)
             if let row {
                 summary(row)
                 Picker("View", selection: $tab) {
@@ -172,19 +185,32 @@ struct TrendDetailView: View {
         }
     }
 
+    private func periodChevron(_ name: String) -> some View {
+        Image(systemName: name)
+            .font(.subheadline.weight(.semibold))
+            .frame(width: 36, height: 36)
+            .background(Color(.tertiarySystemFill), in: Circle())
+    }
+
     private func rangeText(_ row: TrendRow?) -> String {
         guard let days = row?.current.days, let first = days.first?.date, let last = days.last?.date else { return "" }
         return first == last ? Format.dateText(first, "MMM d") : "\(Format.dateText(first, "MMM d")) – \(Format.dateText(last, "MMM d"))"
     }
 
     private func summary(_ row: TrendRow) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(row.current.sampleCount > 0 ? metric.summary(row.current.value, prefs.units) : "Nothing logged in this period.")
-                .font(.title3.weight(.semibold))
+        VStack(alignment: .leading, spacing: Space.s) {
+            HStack(spacing: Space.m) {
+                IconTile(icon: metric.section.icon, tint: metric.section.color, size: 40)
+                Text(row.current.sampleCount > 0 ? metric.summary(row.current.value, prefs.units) : "Nothing logged in this period.")
+                    .font(row.current.sampleCount > 0 ? .rounded(.title2, weight: .bold) : .headline)
+                    .monospacedDigit()
+                    .contentTransition(.numericText())
+            }
+            .padding(.bottom, Space.xs)
             if metric.showBreakdown || row.current.breakdown.count > 1 {
                 ForEach(row.current.breakdown, id: \.series) { segment in
                     HStack {
-                        Circle().fill(color(segment.series)).frame(width: 8, height: 8)
+                        RoundedRectangle(cornerRadius: 3).fill(TrendChart.color(segment.series, row.current)).frame(width: 10, height: 10)
                         Text(segment.series.label)
                         Spacer()
                         Text(metric.unit == .COUNT ? "\(Format.number(segment.value, maxDecimals: 1)) \(metric.noun)" : metric.formatValue(segment.value, prefs.units))
@@ -208,17 +234,17 @@ struct TrendDetailView: View {
                 .onTapGesture { app.openEntry(.edit(activityId: entry.id)) }
         }
     }
-
-    func color(_ series: TrendSeries) -> Color { TrendChart.color(series, metric.section) }
 }
 
 struct TrendChart: View {
     let result: MetricResult
     let prefs: UnitPrefs
 
-    static func color(_ series: TrendSeries, _ section: CardKind) -> Color {
-        let palette: [Color] = [section.color, .teal, .orange, .pink, .indigo, .mint, .brown]
-        return palette[series.rawValue % palette.count]
+    /// The first series shown takes the section's own color; the rest follow the palette.
+    static func color(_ series: TrendSeries, _ result: MetricResult) -> Color {
+        let palette: [Color] = [result.metric.section.color, Palette.diaper, Palette.firsts, Palette.health, Palette.sleep, Palette.growth, Palette.pump]
+        let index = result.breakdown.firstIndex { $0.series == series } ?? series.rawValue
+        return palette[index % palette.count]
     }
 
     private func display(_ value: Double) -> Double {
@@ -243,19 +269,34 @@ struct TrendChart: View {
         Chart {
             ForEach(result.days, id: \.date) { day in
                 ForEach(day.segments, id: \.series) { segment in
-                    BarMark(x: .value("Day", day.date.date(), unit: .day), y: .value("Value", display(segment.value)))
+                    BarMark(x: .value("Day", day.date.date(), unit: .day), y: .value("Value", display(segment.value)), width: .ratio(0.6))
                         .foregroundStyle(by: .value("Series", segment.series.label))
+                        .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
                 }
             }
             if result.sampleCount > 0 {
-                RuleMark(y: .value("AVG", avg))
-                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
-                    .foregroundStyle(.secondary)
-                    .annotation(position: .top, alignment: .leading) { Text("AVG").font(.caption2).foregroundStyle(.secondary) }
+                RuleMark(y: .value("Average", avg))
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 4]))
+                    .foregroundStyle(Color(.secondaryLabel))
+                    .annotation(position: .top, alignment: .leading) {
+                        Text("Average").font(.caption2.weight(.medium)).foregroundStyle(.secondary)
+                    }
             }
         }
+        .chartXAxis {
+            AxisMarks(values: .stride(by: .day, count: result.days.count > 14 ? 7 : 1)) { _ in
+                AxisValueLabel(format: result.days.count > 7 ? .dateTime.day() : .dateTime.weekday(.narrow), centered: true)
+            }
+        }
+        .chartYAxis {
+            AxisMarks(position: .leading) { _ in
+                AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [2, 3]))
+                AxisValueLabel()
+            }
+        }
+        .chartLegend(result.breakdown.count > 1 ? .visible : .hidden)
         .chartYScale(domain: 0 ... max(floor, maxDay * 1.1, avg * 1.1))
-        .chartForegroundStyleScale(domain: result.breakdown.map(\.series.label), range: result.breakdown.map { Self.color($0.series, result.metric.section) })
+        .chartForegroundStyleScale(domain: result.breakdown.map(\.series.label), range: result.breakdown.map { Self.color($0.series, result) })
         .chartYAxisLabel(axisLabel)
     }
 
@@ -282,12 +323,14 @@ struct MarksGrid: View {
             let height = geo.size.height - 18
             let perMs = height / 86_400_000
             ZStack(alignment: .topLeading) {
-                ForEach(Array(["12\nAM", "6\nAM", "12\nPM", "6\nPM"].enumerated()), id: \.offset) { i, label in
-                    Text(label).font(.system(size: 9)).foregroundStyle(.secondary).multilineTextAlignment(.center)
-                        .frame(width: labelWidth).offset(y: 18 + height * CGFloat(i) / 4)
+                ForEach(Array(["12a", "6a", "12p", "6p"].enumerated()), id: \.offset) { i, label in
+                    Text(label).font(.caption2.weight(.medium)).foregroundStyle(.tertiary)
+                        .frame(width: labelWidth - 4, alignment: .leading).offset(y: 20 + height * CGFloat(i) / 4)
                 }
                 ForEach(Array(result.days.enumerated()), id: \.offset) { i, day in
-                    Text(columns > 7 ? "\(day.date.day)" : Format.dateText(day.date, "EEE d")).font(.system(size: 9))
+                    Text(columns > 7 ? "\(day.date.day)" : Format.dateText(day.date, "EEE d")).font(.caption2.weight(.medium))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1).minimumScaleFactor(0.7)
                         .frame(width: colWidth).offset(x: labelWidth + colWidth * CGFloat(i))
                 }
                 ForEach(Array(result.marks.enumerated()), id: \.offset) { _, mark in
@@ -295,10 +338,10 @@ struct MarksGrid: View {
                     if let col = result.days.firstIndex(where: { $0.date == day }) {
                         let y = CGFloat(mark.startMs - day.startOfDayMs(zone)) * perMs
                         let h = max(4, min(height - y, CGFloat(mark.endMs - mark.startMs) * perMs))
-                        RoundedRectangle(cornerRadius: 2)
-                            .fill(TrendChart.color(mark.series, result.metric.section))
-                            .frame(width: max(4, colWidth - 6), height: h)
-                            .offset(x: labelWidth + colWidth * CGFloat(col) + 3, y: 18 + y)
+                        Capsule(style: .continuous)
+                            .fill(TrendChart.color(mark.series, result))
+                            .frame(width: max(4, colWidth - 8), height: h)
+                            .offset(x: labelWidth + colWidth * CGFloat(col) + 4, y: 18 + y)
                             .onTapGesture { onTap(mark.entryId) }
                     }
                 }

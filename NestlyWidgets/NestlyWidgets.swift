@@ -69,15 +69,13 @@ private func unavailableText(_ result: FeedSnapshotResult) -> String? {
     }
 }
 
-private let feedColor = Color(red: 0.95, green: 0.55, blue: 0.35)
-
 // MARK: - Quick Log (spec §21.2)
 
 struct QuickLogWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "NestlyQuickLog", provider: FeedProvider(followDueTime: false)) { entry in
             QuickLogView(entry: entry)
-                .containerBackground(.fill.tertiary, for: .widget)
+                .containerBackground(for: .widget) { Color(.systemBackground) }
         }
         .configurationDisplayName("Nestly Quick Log")
         .description("Log a bottle in one tap, or jump to a diaper, sleep or pump entry.")
@@ -89,60 +87,89 @@ struct QuickLogView: View {
     let entry: FeedEntry
     @Environment(\.widgetFamily) private var family
 
+    private static let links: [(title: String, icon: NestlyIcon, tint: Color, kind: String)] = [
+        ("Diaper", .diaper, Palette.diaper, "DIAPER"),
+        ("Sleep", .sleep, Palette.sleep, "SLEEP"),
+        ("Pump", .pump, Palette.pump, "PUMP"),
+    ]
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 8) {
             header
             Spacer(minLength: 0)
             if let status = entry.status {
-                Text(status).font(.caption2).lineLimit(2).minimumScaleFactor(0.8)
+                Text(status).font(.caption2).foregroundStyle(.secondary).lineLimit(2).minimumScaleFactor(0.8)
             }
             if family == .systemMedium {
-                HStack(spacing: 6) {
-                    bottleButton
-                    link("Diaper", "humidity.fill", "DIAPER")
-                    link("Sleep", "moon.zzz.fill", "SLEEP")
-                    link("Pump", "drop.triangle.fill", "PUMP")
+                HStack(spacing: 8) {
+                    bottleButton(compact: false)
+                    ForEach(Self.links, id: \.kind) { link($0.title, $0.icon, $0.tint, $0.kind, compact: false) }
                 }
             } else {
-                bottleButton
+                bottleButton(compact: true)
                 HStack(spacing: 6) {
-                    link(nil, "humidity.fill", "DIAPER")
-                    link(nil, "moon.zzz.fill", "SLEEP")
-                    link(nil, "drop.triangle.fill", "PUMP")
+                    ForEach(Self.links, id: \.kind) { link($0.title, $0.icon, $0.tint, $0.kind, compact: true) }
                 }
             }
         }
     }
 
     @ViewBuilder private var header: some View {
-        if case let .ready(s) = entry.result {
-            Text(s.childName).font(.headline).lineLimit(1)
-            if let last = s.lastFeed {
-                Text("Last feed \(Format.ago(last.startTime, now: entry.date.epochMs))").font(.caption).foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 2) {
+            if case let .ready(s) = entry.result {
+                Text(s.childName).font(.rounded(.headline)).lineLimit(1)
+                if let last = s.lastFeed {
+                    Text("Last feed \(Format.ago(last.startTime, now: entry.date.epochMs))").font(.caption).foregroundStyle(.secondary)
+                }
+            } else {
+                Text("Nestly").font(.rounded(.headline))
+                Text(unavailableText(entry.result) ?? "").font(.caption).foregroundStyle(.secondary)
             }
-        } else {
-            Text("Nestly").font(.headline)
-            Text(unavailableText(entry.result) ?? "").font(.caption).foregroundStyle(.secondary)
         }
     }
 
-    private var bottleButton: some View {
+    private func bottleButton(compact: Bool) -> some View {
         Button(intent: LogBottleIntent()) {
-            Label("Bottle", systemImage: "waterbottle.fill").font(.caption.weight(.semibold)).frame(maxWidth: .infinity)
+            Group {
+                if compact {
+                    HStack(spacing: 6) {
+                        NestlyIcon.bottle.image.resizable().scaledToFit().frame(width: 16, height: 16)
+                        Text("Log Bottle").font(.caption.weight(.semibold))
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 34)
+                } else {
+                    tileLabel("Bottle", .bottle)
+                }
+            }
+            .foregroundStyle(.white)
+            .background(Palette.feed, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
-        .tint(feedColor)
+        .buttonStyle(.plain)
+        .accessibilityLabel("Log bottle")
     }
 
-    private func link(_ title: String?, _ symbol: String, _ kind: String) -> some View {
+    private func link(_ title: String, _ icon: NestlyIcon, _ tint: Color, _ kind: String, compact: Bool) -> some View {
         Link(destination: URL(string: "nestly://entry/\(kind)")!) {
             Group {
-                if let title { Label(title, systemImage: symbol) } else { Image(systemName: symbol) }
+                if compact {
+                    icon.image.resizable().scaledToFit().frame(width: 16, height: 16)
+                        .frame(maxWidth: .infinity, minHeight: 30)
+                } else {
+                    tileLabel(title, icon)
+                }
             }
-            .font(.caption.weight(.semibold))
-            .frame(maxWidth: .infinity, minHeight: 28)
-            .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
+            .foregroundStyle(tint)
+            .background(tint.opacity(0.15), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
-        .accessibilityLabel(kind.capitalized)
+        .accessibilityLabel(title)
+    }
+
+    private func tileLabel(_ title: String, _ icon: NestlyIcon) -> some View {
+        VStack(spacing: 6) {
+            icon.image.resizable().scaledToFit().frame(width: 22, height: 22)
+            Text(title).font(.caption.weight(.semibold)).foregroundStyle(Color.primary.opacity(0.85))
+        }
+        .frame(maxWidth: .infinity, minHeight: 64)
     }
 }
 
@@ -152,7 +179,7 @@ struct NextFeedWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "NestlyNextFeed", provider: FeedProvider(followDueTime: true)) { entry in
             NextFeedView(entry: entry)
-                .containerBackground(.fill.tertiary, for: .widget)
+                .containerBackground(for: .widget) { Color(.systemBackground) }
                 .widgetURL(URL(string: "nestly://nightstand"))
         }
         .configurationDisplayName("Next feed")
@@ -169,17 +196,22 @@ struct NextFeedView: View {
         if case let .ready(s) = entry.result {
             if family == .accessoryRectangular { rectangular(s) } else { small(s) }
         } else {
-            VStack(alignment: .leading) {
-                Text("NEXT FEED").font(.caption2.weight(.bold))
-                Text(unavailableText(entry.result) ?? "").font(.caption)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Next feed").font(.caption.weight(.semibold))
+                Text(unavailableText(entry.result) ?? "").font(.caption).foregroundStyle(.secondary)
             }
         }
     }
 
     private func rectangular(_ s: FeedSnapshot) -> some View {
         VStack(alignment: .leading, spacing: 1) {
-            Text("\(s.childName) · NEXT FEED").font(.caption2.weight(.bold)).lineLimit(1)
-            stateLine(s, font: .headline)
+            HStack(spacing: 4) {
+                NestlyIcon.bottle.image.resizable().scaledToFit().frame(width: 11, height: 11)
+                Text("\(s.childName) · Next feed").lineLimit(1)
+            }
+            .font(.caption2.weight(.semibold))
+            .widgetAccentable()
+            stateLine(s, font: .rounded(.headline), tinted: false)
             if let last = s.lastFeed {
                 Text("Last \(Format.time(last.startTime))").font(.caption2).foregroundStyle(.secondary)
             }
@@ -188,38 +220,48 @@ struct NextFeedView: View {
     }
 
     private func small(_ s: FeedSnapshot) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(s.childName).font(.caption.weight(.semibold)).lineLimit(1)
-            Text("NEXT FEED").font(.caption2.weight(.bold)).foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 6) {
+                IconTile(icon: .bottle, tint: Palette.feed, size: 22)
+                Text(s.childName).font(.caption.weight(.semibold)).lineLimit(1)
+            }
+            .padding(.bottom, 4)
+            Text("Next feed").font(.caption2).foregroundStyle(.secondary)
             if let due = s.nextDueMs {
-                Text(Format.time(due)).font(.title2.weight(.semibold)).minimumScaleFactor(0.7)
+                Text(Format.time(due))
+                    .font(.rounded(.title, weight: .bold))
+                    .monospacedDigit()
+                    .minimumScaleFactor(0.7)
+                    .lineLimit(1)
             }
-            stateLine(s, font: .caption.weight(.semibold))
-            if let last = s.lastFeed {
-                Text("Last \(Format.time(last.startTime))\(last.detailText().map { " · \($0)" } ?? "")")
-                    .font(.caption2).foregroundStyle(.secondary).lineLimit(1)
-            }
+            stateLine(s, font: .caption.weight(.semibold), tinted: true)
             Spacer(minLength: 0)
-            HStack(spacing: 4) {
+            HStack(spacing: 6) {
                 Button(intent: LogBottleIntent()) {
-                    Text("Log feed").font(.caption2.weight(.semibold)).frame(maxWidth: .infinity)
+                    Text("Log Feed")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity, minHeight: 30)
+                        .background(Palette.feed, in: Capsule())
                 }
-                .tint(feedColor)
+                .buttonStyle(.plain)
                 if s.vitaminDGivenAt == nil {
                     Button(intent: LogVitaminDIntent()) {
-                        Image(systemName: "sun.max.fill").font(.caption2)
+                        NestlyIcon.vitaminD.image.resizable().scaledToFit()
+                            .frame(width: 15, height: 15)
+                            .foregroundStyle(Palette.warning)
+                            .frame(width: 30, height: 30)
+                            .background(Palette.warning.opacity(0.15), in: Circle())
                     }
-                    .tint(.red)
-                    .accessibilityLabel("Vitamin D given")
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Vitamin D due. Log as given")
                 }
             }
-            Text(s.vitaminDGivenAt.map { "Vitamin D given at \(Format.time($0))" } ?? "Vitamin D due")
-                .font(.system(size: 9)).foregroundStyle(.secondary).lineLimit(1)
         }
     }
 
     @ViewBuilder
-    private func stateLine(_ s: FeedSnapshot, font: Font) -> some View {
+    private func stateLine(_ s: FeedSnapshot, font: Font, tinted: Bool) -> some View {
         switch s.state(now: entry.date.epochMs) {
         case .noFeed:
             Text("No feeds yet").font(font)
@@ -228,15 +270,15 @@ struct NextFeedView: View {
                 Text("in")
                 Text(Date(epochMs: due), style: .relative)
             }
-            .font(font).foregroundStyle(.orange)
+            .font(font).foregroundStyle(tinted ? AnyShapeStyle(.secondary) : AnyShapeStyle(.primary))
         case .dueNow:
-            Text("NOW").font(font).foregroundStyle(.orange)
+            Text("Due now").font(font).foregroundStyle(tinted ? AnyShapeStyle(Palette.warning) : AnyShapeStyle(.primary))
         case let .overdue(due, _):
             HStack(spacing: 3) {
-                Text("OVERDUE BY")
+                Text("Overdue by")
                 Text(Date(epochMs: due), style: .relative)
             }
-            .font(font).foregroundStyle(.red)
+            .font(font).foregroundStyle(tinted ? AnyShapeStyle(Palette.critical) : AnyShapeStyle(.primary))
         }
     }
 }
@@ -247,45 +289,51 @@ struct TimerLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: TimerActivityAttributes.self) { context in
             LockScreenTimerView(attributes: context.attributes, state: context.state)
-                .padding()
-                .activityBackgroundTint(Color.black.opacity(0.6))
+                .padding(16)
                 .widgetURL(entryURL(context.attributes))
         } dynamicIsland: { context in
-            DynamicIsland {
+            let group = context.attributes.group
+            return DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    Label(context.attributes.childName, systemImage: symbol(context.attributes.group)).font(.caption)
+                    HStack(spacing: 8) {
+                        IconTile(icon: group.icon, tint: group.color, size: 36, filled: true)
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text(context.attributes.title(context.state)).font(.subheadline.weight(.semibold)).lineLimit(1)
+                            Text(context.attributes.childName).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                        }
+                    }
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    ElapsedText(state: context.state).font(.title3.monospacedDigit()).frame(maxWidth: 110, alignment: .trailing)
+                    ElapsedText(state: context.state)
+                        .font(.rounded(.title2, weight: .semibold))
+                        .monospacedDigit()
+                        .foregroundStyle(group.color)
+                        .frame(maxWidth: 110, alignment: .trailing)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     HStack {
-                        Text(context.attributes.title(context.state)).font(.subheadline)
+                        if context.state.isPaused {
+                            Text("Paused").font(.caption.weight(.medium)).foregroundStyle(.secondary)
+                        }
                         Spacer()
-                        TimerButtons(group: context.attributes.group, state: context.state)
+                        TimerButtons(group: group, state: context.state)
                     }
+                    .padding(.top, 4)
                 }
             } compactLeading: {
-                Image(systemName: symbol(context.attributes.group))
+                group.icon.image.resizable().scaledToFit().frame(width: 16, height: 16).foregroundStyle(group.color)
             } compactTrailing: {
-                ElapsedText(state: context.state).monospacedDigit().frame(maxWidth: 56)
+                ElapsedText(state: context.state).monospacedDigit().foregroundStyle(group.color).frame(maxWidth: 56)
             } minimal: {
-                Image(systemName: symbol(context.attributes.group))
+                group.icon.image.resizable().scaledToFit().frame(width: 16, height: 16).foregroundStyle(group.color)
             }
+            .keylineTint(group.color)
             .widgetURL(entryURL(context.attributes))
         }
     }
 
     private func entryURL(_ attributes: TimerActivityAttributes) -> URL? {
         URL(string: "nestly://entry/\(attributes.group.entryKind.rawValue)")
-    }
-}
-
-private func symbol(_ group: TimerGroup) -> String {
-    switch group {
-    case .BREASTFEED: "figure.and.child.holdinghands"
-    case .PUMP: "drop.triangle.fill"
-    case .SLEEP: "moon.zzz.fill"
     }
 }
 
@@ -307,39 +355,54 @@ struct TimerButtons: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            Button(intent: PauseResumeTimerIntent(group: group)) {
-                Label(state.isPaused ? "Resume" : "Pause", systemImage: state.isPaused ? "play.fill" : "pause.fill")
-                    .font(.caption.weight(.semibold))
-            }
-            .tint(.orange)
             if group == .BREASTFEED {
                 Button(intent: SwitchSideIntent()) {
-                    Label("Switch side", systemImage: "arrow.left.arrow.right").font(.caption.weight(.semibold))
+                    circle("arrow.left.arrow.right", fill: Color.gray.opacity(0.25), foreground: .primary)
                 }
-                .tint(.gray)
+                .buttonStyle(.plain)
+                .accessibilityLabel("Switch side")
             }
+            Button(intent: PauseResumeTimerIntent(group: group)) {
+                circle(state.isPaused ? "play.fill" : "pause.fill", fill: group.color, foreground: .white)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(state.isPaused ? "Resume" : "Pause")
         }
+    }
+
+    private func circle(_ symbol: String, fill: Color, foreground: Color) -> some View {
+        Image(systemName: symbol)
+            .font(.system(size: 15, weight: .bold))
+            .foregroundStyle(foreground)
+            .frame(width: 40, height: 40)
+            .background(fill, in: Circle())
     }
 }
 
+/// Mirrors the in-app timer banner: filled tile, title and child, elapsed time, controls.
 struct LockScreenTimerView: View {
     let attributes: TimerActivityAttributes
     let state: TimerGroupState
 
     var body: some View {
+        let group = attributes.group
         HStack(alignment: .center, spacing: 12) {
-            Image(systemName: symbol(attributes.group)).font(.title2)
-            VStack(alignment: .leading, spacing: 2) {
+            IconTile(icon: group.icon, tint: group.color, size: 44, filled: true)
+            VStack(alignment: .leading, spacing: 1) {
+                HStack(spacing: 6) {
+                    Text(attributes.title(state)).font(.subheadline.weight(.semibold))
+                    if state.isPaused {
+                        Text("Paused").font(.caption.weight(.medium)).foregroundStyle(.secondary)
+                    }
+                }
+                ElapsedText(state: state)
+                    .font(.rounded(.title2, weight: .bold))
+                    .monospacedDigit()
+                    .foregroundStyle(group.color)
                 Text(attributes.childName).font(.caption).foregroundStyle(.secondary)
-                Text(attributes.title(state)).font(.headline)
-                ElapsedText(state: state).font(.title2.monospacedDigit())
-                if state.isPaused { Text("Paused").font(.caption2).foregroundStyle(.secondary) }
             }
-            Spacer()
-            TimerButtons(group: attributes.group, state: state)
-                .labelStyle(.iconOnly)
-                .buttonStyle(.bordered)
+            Spacer(minLength: 8)
+            TimerButtons(group: group, state: state)
         }
-        .foregroundStyle(.white)
     }
 }
