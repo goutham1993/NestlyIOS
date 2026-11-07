@@ -93,16 +93,30 @@ struct OnboardingView: View {
     @State private var showJoin = false
 
     var body: some View {
+        Group {
+            if hasFamily { childWelcome } else { familyOnboarding }
+        }
+        .onAppear { name = app.prefs.pendingCaregiverName ?? app.family.currentCaregiver?.name ?? "" }
+        .sheet(isPresented: $addingChild) {
+            ChildForm(title: "Add child", askCaregiverName: false) { childName, sex, birth, _ in
+                try await app.repos.family.addChild(name: childName, sex: sex, birthDate: birth, caregiverName: app.prefs.pendingCaregiverName ?? "")
+                app.prefs.pendingCaregiverName = nil
+            }
+        }
+        .fileImporter(isPresented: $importing, allowedContentTypes: ImportTypes.all) { result in
+            runNaraImport(result)
+        }
+    }
+
+    private var familyOnboarding: some View {
         ScrollView {
             VStack(spacing: Space.xl) {
                 BrandHeader(
                     title: "Welcome to Nestly",
-                    message: hasFamily
-                        ? "Add your first child to start tracking, or do a one-time import of your Nara Baby history."
-                        : "Start a new family, or join one with an invite code from another caregiver."
+                    message: "Start a new family, or join one with an invite code from another caregiver."
                 )
                 .padding(.top, 48)
-                if hasFamily { childStep } else { familyStep }
+                familyStep
                 if let message {
                     Text(message).font(.footnote).foregroundStyle(.secondary).multilineTextAlignment(.center)
                 }
@@ -116,16 +130,128 @@ struct OnboardingView: View {
         }
         .scrollDismissesKeyboard(.interactively)
         .background(Color(.systemGroupedBackground))
-        .onAppear { name = app.prefs.pendingCaregiverName ?? app.family.currentCaregiver?.name ?? "" }
-        .sheet(isPresented: $addingChild) {
-            ChildForm(title: "Add child", askCaregiverName: false) { childName, sex, birth, _ in
-                try await app.repos.family.addChild(name: childName, sex: sex, birthDate: birth, caregiverName: app.prefs.pendingCaregiverName ?? "")
-                app.prefs.pendingCaregiverName = nil
+    }
+
+    private var childWelcome: some View {
+        GeometryReader { proxy in
+            ScrollView {
+                VStack(spacing: 0) {
+                    HStack {
+                        Spacer()
+                        Button("Sign out") { Task { await app.signOut() } }
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.top, Space.xs)
+
+                    VStack(spacing: Space.l) {
+                        IconTile(icon: .system("bird.fill"), tint: Palette.accent, size: 76, filled: true)
+                            .accessibilityHidden(true)
+                        VStack(spacing: Space.s) {
+                            Text("Welcome to Nestly")
+                                .font(.rounded(.largeTitle, weight: .bold))
+                                .multilineTextAlignment(.center)
+                            Text("Add your first child to start tracking.\nEverything stays in one calm place.")
+                                .font(.body)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 28)
+
+                    VStack(alignment: .leading, spacing: 20) {
+                        welcomePoint("clock", "Log feeds, sleep and diapers in a tap")
+                        welcomePoint("person.2", "Share with your partner and caregivers")
+                        welcomePoint("chart.line.uptrend.xyaxis", "Spot patterns in daily and weekly trends")
+                    }
+                    .padding(.top, 36)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                    Spacer(minLength: 36)
+
+                    VStack(spacing: Space.m) {
+                        if let message {
+                            Text(message)
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
+                                .frame(maxWidth: .infinity)
+                        }
+                        Button { addingChild = true } label: { Text("+ Add your child") }
+                            .buttonStyle(.primary)
+                        importRow
+                        VStack(spacing: Space.m) {
+                            HStack(spacing: 4) {
+                                Text("Have an invite code?")
+                                    .foregroundStyle(.secondary)
+                                Button("Join a family") { withAnimation(.snappy) { showJoin = true } }
+                                    .buttonStyle(.plain)
+                                    .fontWeight(.semibold)
+                                    .foregroundStyle(Palette.accent)
+                            }
+                            .font(.subheadline)
+                            if showJoin {
+                                Text("Another caregiver can create a code in Account → Family.")
+                                    .font(.footnote)
+                                    .multilineTextAlignment(.center)
+                                    .foregroundStyle(.secondary)
+                                joinFields
+                            }
+                        }
+                        .padding(.top, Space.xs)
+                    }
+                }
+                .padding(.horizontal, Space.xl)
+                .padding(.bottom, Space.xl)
+                .frame(maxWidth: 480)
+                .frame(maxWidth: .infinity, minHeight: proxy.size.height, alignment: .top)
             }
+            .scrollBounceBehavior(.basedOnSize)
+            .scrollDismissesKeyboard(.interactively)
         }
-        .fileImporter(isPresented: $importing, allowedContentTypes: ImportTypes.all) { result in
-            runNaraImport(result)
+        .background(Color(.systemBackground).ignoresSafeArea())
+    }
+
+    private func welcomePoint(_ symbol: String, _ text: String) -> some View {
+        HStack(alignment: .center, spacing: 14) {
+            IconTile(icon: .system(symbol), tint: Palette.accent, size: 44)
+            Text(text)
+                .font(.body)
+                .foregroundStyle(.primary)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
         }
+    }
+
+    private var importRow: some View {
+        Button { importing = true } label: {
+            HStack(spacing: Space.m) {
+                IconTile(icon: .system("arrow.down"), tint: Palette.accent, size: 40)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(busy ? "Importing…" : "Import from Nara Baby")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(.primary)
+                    Text("One-time import of your history")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer(minLength: Space.s)
+                Image(systemName: "chevron.right")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.horizontal, Space.m)
+            .padding(.vertical, 12)
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: Radius.l, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: Radius.l, style: .continuous)
+                    .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.pressable)
+        .disabled(busy)
+        .opacity(busy ? 0.55 : 1)
     }
 
     private var familyStep: some View {
@@ -143,24 +269,6 @@ struct OnboardingView: View {
             Button("Join with Invite Code") { join() }
                 .buttonStyle(.secondary)
                 .disabled(busy || code.isBlank || name.isBlank)
-        }
-    }
-
-    private var childStep: some View {
-        VStack(spacing: Space.m) {
-            Button { addingChild = true } label: { Label("Add Child", systemImage: "plus") }
-                .buttonStyle(.primary)
-            Button { importing = true } label: { Text(busy ? "Importing…" : "Import from Nara Instead") }
-                .buttonStyle(.secondary).disabled(busy)
-            OrDivider()
-            if showJoin {
-                Text("Another caregiver can create a code in Account → Family.")
-                    .font(.footnote).multilineTextAlignment(.center).foregroundStyle(.secondary)
-                joinFields
-            } else {
-                Button("Join a family with an invite code instead") { withAnimation(.snappy) { showJoin = true } }
-                    .font(.subheadline.weight(.medium))
-            }
         }
     }
 

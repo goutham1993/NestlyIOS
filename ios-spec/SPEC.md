@@ -292,6 +292,7 @@ Rules:
 - `createInvite(familyId)` — insert `{id, family_id}` then read back `code`.
 - `updateChild(profile)` — version-checked.
 - `addCaregiver(name)` — name-only `MEMBER`; if the name already exists return the existing one.
+- `removeCaregiver(caregiver)` — version-checked soft delete. Refuses the signed-in user's own row, the last remaining caregiver, and (unless the caller is `OWNER`) another signed-in member. If that id was the stored current caregiver, clear it. Bump the caregiver tick. Already-deleted rows are a no-op.
 - `currentFamilyId` — selected profile's family, else first family.
 - `clearCurrentFamilyData` (DEBUG builds only) — hard-delete in order: activity, reminder, appointment_question, appointment, note, family_invite, profile, family, then caregivers; also delete all storage objects under `{familyId}/`.
 
@@ -657,7 +658,7 @@ Rows: **Family**, **Settings**, **Subscription**, **Help**. Section "Data": **Im
 
 ### 18.1 Family
 - **Children**: each row name + age + "Tap to edit" → Edit Child dialog (Name, Boy/Girl, Birthdate). Save → version-checked update **and selects that child**. **Add child** (asks "Your name" only if the family has no caregivers).
-- **Caregivers**: each row name + "Your Profile" (if current) or "Tap if this is you" (tap → set current caregiver). **Add caregiver** → name-only.
+- **Caregivers**: each row name + "Your Profile" (if current) or "Tap if this is you" (tap → set current caregiver). **Add caregiver** → name-only. **Remove** (swipe or long-press, confirm): version-checked soft delete. Hidden for yourself and for the last caregiver. Any member can remove a name-only caregiver; only an `OWNER` can remove another signed-in member. Past entries stay.
 - **Invite**: **Create invite code** → "Code: {CODE} — share it with another caregiver" (add a Copy/Share action).
 
 ### 18.2 Settings

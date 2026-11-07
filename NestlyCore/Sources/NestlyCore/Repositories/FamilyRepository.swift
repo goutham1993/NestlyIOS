@@ -155,9 +155,48 @@ public struct FamilyRepository: Sendable {
         return caregiver
     }
 
+    /// Anyone in the family can remove a name-only caregiver. Only an owner can remove another
+    /// signed-in member (the database trigger enforces that). You cannot remove yourself, and the
+    /// last caregiver in the family stays.
+    public func canRemove(_ caregiver: CaregiverEntity, me: CaregiverEntity?, caregiverCount: Int) -> Bool {
+        guard caregiverCount > 1, !isSignedInUser(caregiver) else { return false }
+        if caregiver.userId == nil { return true }
+        return me?.role == CaregiverRole.OWNER.rawValue
+    }
+
+    /// Version-checked soft delete. Past entries that name this caregiver are left in place.
+    public func removeCaregiver(_ caregiver: CaregiverEntity) async throws {
+        let caregivers = try await fetchCaregivers(familyId: caregiver.familyId)
+        guard let fresh = caregivers.first(where: { $0.id == caregiver.id }) else {
+            if prefs.currentCaregiverId == caregiver.id { prefs.setCurrentCaregiver(nil) }
+            backend.bus.bump(.caregiver)
+            return
+        }
+        let me = currentCaregiver(in: caregivers)
+        guard canRemove(fresh, me: me, caregiverCount: caregivers.count) else {
+            if isSignedInUser(fresh) {
+                throw ImportError("You can't remove yourself from the family.")
+            }
+            if caregivers.count <= 1 {
+                throw ImportError("A family needs at least one caregiver.")
+            }
+            throw ImportError("Only the family owner can remove a signed-in caregiver.")
+        }
+        try await backend.softDelete("caregiver", id: fresh.id, version: fresh.version)
+        if prefs.currentCaregiverId == fresh.id {
+            prefs.setCurrentCaregiver(nil)
+        }
+        backend.bus.bump(.caregiver)
+    }
+
     public func setCurrentCaregiver(_ id: String) {
         prefs.setCurrentCaregiver(id)
         backend.bus.bump(.caregiver)
+    }
+
+    private func isSignedInUser(_ caregiver: CaregiverEntity) -> Bool {
+        guard let uid = backend.currentUserId, let theirs = caregiver.userId else { return false }
+        return uid.caseInsensitiveCompare(theirs) == .orderedSame
     }
 
     // MARK: Import

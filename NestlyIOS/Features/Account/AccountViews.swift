@@ -7,6 +7,7 @@ import UniformTypeIdentifiers
 struct AccountTab: View {
     @Environment(AppModel.self) private var app
     @Environment(FamilyStore.self) private var family
+    @State private var confirmSignOut = false
 
     var body: some View {
         List {
@@ -25,8 +26,19 @@ struct AccountTab: View {
                 Button {} label: { IconRow(title: "Share Nestly with Friends", icon: .system("square.and.arrow.up.fill"), chevron: false) }
                 Button {} label: { IconRow(title: "Rate Nestly", icon: .system("hand.thumbsup.fill"), chevron: false) }
             }
+            Section {
+                Button(role: .destructive) { confirmSignOut = true } label: {
+                    Text("Sign Out").frame(maxWidth: .infinity)
+                }
+            }
         }
         .navigationTitle("Account")
+        .confirmationDialog("Sign out?", isPresented: $confirmSignOut, titleVisibility: .visible) {
+            Button("Sign Out", role: .destructive) { Task { await app.signOut() } }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("You'll need to sign in again to see this family's tracking.")
+        }
     }
 
     private var familyHeader: some View {
@@ -66,6 +78,8 @@ struct FamilyView: View {
     @State private var addingChild = false
     @State private var addingCaregiver = false
     @State private var caregiverName = ""
+    @State private var caregiverToRemove: CaregiverEntity?
+    @State private var confirmRemove = false
     @State private var invite: String?
     @State private var message: String?
     @State private var working = false
@@ -96,26 +110,17 @@ struct FamilyView: View {
                 }
                 Button { addingChild = true } label: { Label("Add Child", systemImage: "plus") }
             }
-            Section("Caregivers") {
+            Section {
                 ForEach(family.caregivers) { caregiver in
-                    let isMe = caregiver.id == family.currentCaregiver?.id
-                    Button {
-                        if !isMe { app.repos.family.setCurrentCaregiver(caregiver.id) }
-                    } label: {
-                        HStack(spacing: Space.m) {
-                            IconTile(icon: .family, tint: isMe ? Palette.accent : .secondary, size: 32)
-                            Text(caregiver.name).foregroundStyle(Color.primary)
-                            Spacer()
-                            if isMe {
-                                StatusPill(text: "You", tint: Palette.accent)
-                            } else {
-                                Text("Tap if this is you").font(.footnote).foregroundStyle(.secondary)
-                            }
-                        }
-                        .foregroundStyle(Color.primary)
-                    }
+                    caregiverRow(caregiver)
                 }
                 Button { caregiverName = ""; addingCaregiver = true } label: { Label("Add Caregiver", systemImage: "plus") }
+            } header: {
+                Text("Caregivers")
+            } footer: {
+                if family.caregivers.contains(where: canRemove) {
+                    Text("Swipe left to remove a caregiver. Entries they already logged stay.")
+                }
             }
             Section {
                 Button { Task { await createInvite() } } label: {
@@ -170,6 +175,71 @@ struct FamilyView: View {
             Button("Cancel", role: .cancel) {}
             Button("Add") { Task { await addCaregiver() } }
         }
+        .confirmationDialog(removeTitle, isPresented: $confirmRemove, titleVisibility: .visible) {
+            Button("Remove", role: .destructive) {
+                guard let caregiver = caregiverToRemove else { return }
+                Task { await removeCaregiver(caregiver) }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(removeMessage)
+        }
+    }
+
+    private var removeTitle: String {
+        caregiverToRemove.map { "Remove \($0.name)?" } ?? "Remove caregiver?"
+    }
+
+    private var removeMessage: String {
+        if caregiverToRemove?.userId != nil {
+            return "They'll lose access to this family. Entries they already logged stay."
+        }
+        return "They'll no longer show up in your family. Entries they already logged stay."
+    }
+
+    private func caregiverRow(_ caregiver: CaregiverEntity) -> some View {
+        let isMe = caregiver.id == family.currentCaregiver?.id
+        let removable = canRemove(caregiver)
+        return Button {
+            if !isMe { app.repos.family.setCurrentCaregiver(caregiver.id) }
+        } label: {
+            HStack(spacing: Space.m) {
+                IconTile(icon: .family, tint: isMe ? Palette.accent : .secondary, size: 32)
+                Text(caregiver.name).foregroundStyle(Color.primary)
+                Spacer()
+                if isMe {
+                    StatusPill(text: "You", tint: Palette.accent)
+                } else {
+                    Text("Tap if this is you").font(.footnote).foregroundStyle(.secondary)
+                }
+            }
+            .foregroundStyle(Color.primary)
+        }
+        .accessibilityHint(removable ? "Swipe to remove" : (isMe ? "This is you" : "Mark as you"))
+        .contextMenu {
+            if removable {
+                Button(role: .destructive) { askToRemove(caregiver) } label: {
+                    Label("Remove", systemImage: "trash")
+                }
+            }
+        }
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            if removable {
+                Button(role: .destructive) { askToRemove(caregiver) } label: {
+                    Label("Remove", systemImage: "trash")
+                }
+            }
+        }
+    }
+
+    private func canRemove(_ caregiver: CaregiverEntity) -> Bool {
+        app.repos.family.canRemove(caregiver, me: family.currentCaregiver, caregiverCount: family.caregivers.count)
+    }
+
+    private func askToRemove(_ caregiver: CaregiverEntity) {
+        Haptics.warning()
+        caregiverToRemove = caregiver
+        confirmRemove = true
     }
 
     private func createInvite() async {
@@ -194,6 +264,19 @@ struct FamilyView: View {
             message = FriendlyError.message(error)
         }
     }
+
+    private func removeCaregiver(_ caregiver: CaregiverEntity) async {
+        do {
+            try await app.repos.family.removeCaregiver(caregiver)
+            message = nil
+            Haptics.success()
+        } catch {
+            if error is ConflictError { app.repos.backend.bus.bump(.caregiver) }
+            message = error is ConflictError
+                ? "That caregiver changed. Take another look and try again."
+                : FriendlyError.message(error)
+        }
+    }
 }
 
 // MARK: - Settings (spec §18.2)
@@ -204,6 +287,7 @@ struct SettingsView: View {
     @Environment(Preferences.self) private var prefs
     @State private var editingDefault = false
     @State private var defaultText = ""
+    @State private var confirmSignOut = false
     #if DEBUG
     @State private var confirmClear = false
     @State private var clearMessage: String?
@@ -236,8 +320,8 @@ struct SettingsView: View {
                 Text("Used by the widget, Siri and the Nightstand Log Feed button.")
             }
             Section {
-                Button(role: .destructive) { Task { await app.signOut() } } label: {
-                    Text("Log Out").frame(maxWidth: .infinity)
+                Button(role: .destructive) { confirmSignOut = true } label: {
+                    Text("Sign Out").frame(maxWidth: .infinity)
                 }
             }
             #if DEBUG
@@ -248,6 +332,12 @@ struct SettingsView: View {
             #endif
         }
         .navigationTitle("Settings")
+        .confirmationDialog("Sign out?", isPresented: $confirmSignOut, titleVisibility: .visible) {
+            Button("Sign Out", role: .destructive) { Task { await app.signOut() } }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("You'll need to sign in again to see this family's tracking.")
+        }
         .alert("Default bottle amount", isPresented: $editingDefault) {
             TextField(Units.volumeLabel(prefs.units.volume), text: $defaultText).keyboardType(.decimalPad)
             Button("Cancel", role: .cancel) {}
