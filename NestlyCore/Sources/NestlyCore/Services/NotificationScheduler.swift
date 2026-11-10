@@ -31,9 +31,14 @@ public enum NotificationScheduler {
 
         if let reminders = try? await repos.reminders.fetchMine() {
             for reminder in reminders where reminder.enabled {
-                let latest = try? await repos.activities.latestOf(
-                    familyId: reminder.familyId, profileId: reminder.profileId, ReminderLogic.typesFor(reminder.kind)
-                )
+                let latest: ActivityEntity?
+                if reminder.kind == .FEED, let profileId = reminder.profileId {
+                    latest = try? await repos.activities.latestFeedForSchedule(familyId: reminder.familyId, profileId: profileId)
+                } else {
+                    latest = try? await repos.activities.latestOf(
+                        familyId: reminder.familyId, profileId: reminder.profileId, ReminderLogic.typesFor(reminder.kind)
+                    )
+                }
                 guard let fire = ReminderLogic.nextFireMs(latest?.startTime, reminder.intervalMinutes, now: now) else { continue }
                 let label = ReminderLogic.label(reminder.kind)
                 await add(

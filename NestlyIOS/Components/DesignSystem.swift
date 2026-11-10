@@ -141,6 +141,7 @@ struct SelectTile: View {
     let title: String
     let icon: NestlyIcon
     let selected: Bool
+    var subtitle: String? = nil
     var tint: Color = Palette.accent
     let action: () -> Void
 
@@ -154,8 +155,18 @@ struct SelectTile: View {
                     .foregroundStyle(selected ? tint : .secondary)
                 Text(title).font(.subheadline.weight(selected ? .semibold : .medium))
                     .foregroundStyle(selected ? tint : .primary)
+                    .multilineTextAlignment(.center)
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
-            .frame(maxWidth: .infinity, minHeight: 72)
+            .padding(.horizontal, Space.s)
+            .padding(.vertical, Space.m)
+            .frame(maxWidth: .infinity, minHeight: subtitle == nil ? 72 : 96)
             .background(selected ? tint.opacity(0.16) : Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: Radius.s, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: Radius.s, style: .continuous)
@@ -165,6 +176,7 @@ struct SelectTile: View {
         .buttonStyle(.pressable)
         .sensoryFeedback(.selection, trigger: selected)
         .accessibilityAddTraits(selected ? .isSelected : [])
+        .accessibilityLabel(subtitle.map { "\(title). \($0)" } ?? title)
     }
 }
 

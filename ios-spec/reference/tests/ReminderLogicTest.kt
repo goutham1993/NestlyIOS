@@ -1,7 +1,13 @@
 package com.lifestyle.nestly.data.reminder
 
+import com.lifestyle.nestly.data.model.ActivityEntity
+import com.lifestyle.nestly.data.model.ActivityType
+import com.lifestyle.nestly.data.model.MealType
+import com.lifestyle.nestly.data.model.SolidsDetails
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ReminderLogicTest {
@@ -63,5 +69,25 @@ class ReminderLogicTest {
     @Test
     fun nextFeedNoFeedWithoutHistory() {
         assertEquals(NextFeedState.NoFeed, ReminderLogic.nextFeedState(null, 180, now = 1_000L))
+    }
+
+    @Test
+    fun resetsFeedScheduleForMilkAndSolidsChoice() {
+        fun solids(resets: Boolean?) = ActivityEntity(
+            id = "s",
+            familyId = "f",
+            profileId = "p",
+            type = ActivityType.SOLIDS,
+            startTime = 1_000L,
+            timeZone = "UTC",
+            solids = SolidsDetails(MealType.LUNCH, listOf("Peas"), resetsFeedSchedule = resets ?: true),
+            createdAt = 1L,
+            updatedAt = 1L,
+        )
+        assertTrue(ReminderLogic.resetsFeedSchedule(
+            ActivityEntity(id = "b", familyId = "f", profileId = "p", type = ActivityType.BOTTLE_FEED, startTime = 1L, timeZone = "UTC", createdAt = 1L, updatedAt = 1L),
+        ))
+        assertFalse(ReminderLogic.resetsFeedSchedule(solids(false)))
+        assertTrue(ReminderLogic.resetsFeedSchedule(solids(true)))
     }
 }

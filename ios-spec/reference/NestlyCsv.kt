@@ -76,6 +76,7 @@ object NestlyCsv {
         "milestone_milestoneKey",
         "solids_mealType",
         "solids_foods",
+        "solids_resetsFeedSchedule",
         "routine_name",
         "babyFirst_title",
         "medical_temperatureC",
@@ -186,6 +187,7 @@ object NestlyCsv {
             a.solids?.let {
                 put("solids_mealType", it.mealType?.name)
                 put("solids_foods", it.foods.joinToString(LIST_SEP))
+                put("solids_resetsFeedSchedule", it.resetsFeedSchedule.toString())
             }
             a.routine?.let { put("routine_name", it.name) }
             a.babyFirst?.let { put("babyFirst_title", it.title) }
@@ -317,10 +319,11 @@ object NestlyCsv {
     }
 
     private fun solidsOf(row: Map<String, String>): SolidsDetails? {
-        if ("solids_mealType" !in row && "solids_foods" !in row) return null
+        if ("solids_mealType" !in row && "solids_foods" !in row && "solids_resetsFeedSchedule" !in row) return null
         return SolidsDetails(
             mealType = row["solids_mealType"]?.let { runCatching { MealType.valueOf(it) }.getOrNull() },
             foods = row["solids_foods"]?.split(LIST_SEP)?.filter { it.isNotEmpty() }.orEmpty(),
+            resetsFeedSchedule = row["solids_resetsFeedSchedule"]?.toBooleanStrictOrNull() ?: true,
         )
     }
 

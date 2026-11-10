@@ -104,7 +104,9 @@ object EntryBuilder {
                     totalMl = d.bottleMl,
                 ),
             )
-            EntryKind.SOLIDS -> common.copy(solids = SolidsDetails(d.mealType, d.foods))
+            EntryKind.SOLIDS -> common.copy(
+                solids = SolidsDetails(d.mealType, d.foods, resetsFeedSchedule = d.solidsResetsFeedSchedule),
+            )
             EntryKind.PUMP -> common.copy(
                 // No duration yet → leave end open so the session can be finished later.
                 endTime = if (d.pumpSec > 0) d.startTime + d.pumpSec * 1000 else null,
@@ -169,6 +171,7 @@ object EntryBuilder {
         endSide = a.breastfeed?.endSide,
         mealType = a.solids?.mealType,
         foods = a.solids?.foods.orEmpty(),
+        solidsResetsFeedSchedule = a.solids?.resetsFeedSchedule ?: true,
         pumpMode = if (a.pump?.leftMl != null || a.pump?.rightMl != null) PumpMode.LEFT_RIGHT else PumpMode.TOTAL,
         pumpSec = a.pump?.durationSec ?: 0,
         pumpLeftMl = a.pump?.leftMl,

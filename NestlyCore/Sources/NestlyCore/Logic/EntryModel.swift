@@ -93,6 +93,8 @@ public struct EntryDraft: Equatable, Sendable, Copyable {
 
     public var mealType: MealType? = nil
     public var foods: [String] = []
+    /// Solids only: false = keep milk schedule (default for new), true = replace milk feed.
+    public var solidsResetsFeedSchedule: Bool = false
 
     public var pumpMode: PumpMode = .TOTAL
     public var pumpSec: Int64 = 0
@@ -142,6 +144,7 @@ public struct EntryDraft: Equatable, Sendable, Copyable {
         endSide: BreastSide? = nil,
         mealType: MealType? = nil,
         foods: [String] = [],
+        solidsResetsFeedSchedule: Bool = false,
         pumpMode: PumpMode = .TOTAL,
         pumpSec: Int64 = 0,
         pumpLeftMl: Double? = nil,
@@ -181,6 +184,7 @@ public struct EntryDraft: Equatable, Sendable, Copyable {
         self.endSide = endSide
         self.mealType = mealType
         self.foods = foods
+        self.solidsResetsFeedSchedule = solidsResetsFeedSchedule
         self.pumpMode = pumpMode
         self.pumpSec = pumpSec
         self.pumpLeftMl = pumpLeftMl

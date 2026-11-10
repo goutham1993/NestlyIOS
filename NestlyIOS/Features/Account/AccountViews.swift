@@ -286,6 +286,7 @@ struct SettingsView: View {
     @Environment(FamilyStore.self) private var family
     @Environment(Preferences.self) private var prefs
     @State private var editingDefault = false
+    @State private var editingFeedInterval = false
     @State private var defaultText = ""
     @State private var confirmSignOut = false
     #if DEBUG
@@ -316,8 +317,17 @@ struct SettingsView: View {
                         chevron: false
                     )
                 }
+                Button { editingFeedInterval = true } label: {
+                    IconRow(
+                        title: "Default Feed Interval",
+                        icon: .reminder,
+                        tint: Palette.feed,
+                        value: Format.durationShort(EpochMs(prefs.defaultFeedIntervalMinutes) * 60_000, roundUp: false),
+                        chevron: false
+                    )
+                }
             } footer: {
-                Text("Used by the widget, Siri and the Nightstand Log Feed button.")
+                Text("Bottle amount is used by the widget, Siri and the Nightstand Log Feed button. Feed interval sets when the next feed is due, and updates your feed reminders.")
             }
             Section {
                 Button(role: .destructive) { confirmSignOut = true } label: {
@@ -349,6 +359,15 @@ struct SettingsView: View {
         } message: {
             Text("Tap to change it. Leave the amount empty and tap OK to turn the default off.")
         }
+        .sheet(isPresented: $editingFeedInterval) {
+            DurationEditor(
+                title: "Default feed interval",
+                initialSeconds: Int64(prefs.defaultFeedIntervalMinutes) * 60,
+                showSeconds: false
+            ) { seconds in
+                applyFeedInterval(max(1, Int(seconds / 60)))
+            }
+        }
         #if DEBUG
         .confirmationDialog("Clear all data?", isPresented: $confirmClear, titleVisibility: .visible) {
             Button("Clear all data", role: .destructive) { Task { await clearAll() } }
@@ -356,6 +375,29 @@ struct SettingsView: View {
             Text("Deletes this family's children, activities, reminders, appointments, notes and photos for everyone.")
         }
         #endif
+    }
+
+    /// Saves the countdown interval and copies it onto existing feed reminders so the dashboard matches.
+    private func applyFeedInterval(_ minutes: Int) {
+        prefs.setDefaultFeedIntervalMinutes(minutes)
+        WidgetRefresher.reloadAll()
+        app.repos.backend.bus.bump(.reminder)
+        Task {
+            let reminders = (try? await app.repos.reminders.fetchMine()) ?? []
+            var failed = false
+            for reminder in reminders where reminder.kind == .FEED && reminder.intervalMinutes != minutes {
+                do {
+                    try await app.repos.reminders.update(reminder.with { $0.intervalMinutes = minutes })
+                } catch {
+                    failed = true
+                }
+            }
+            app.scheduleReschedule()
+            WidgetRefresher.reloadAll()
+            if failed {
+                app.showToast("Couldn't update every feed reminder. Check your connection and try again.")
+            }
+        }
     }
 
     #if DEBUG

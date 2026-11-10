@@ -165,6 +165,35 @@ final class ReminderLogicTests: XCTestCase {
     func testNextFeedNoFeedWithoutHistory() {
         XCTAssertEqual(ReminderLogic.nextFeedState(nil, 180, now: 1_000), .noFeed)
     }
+
+    func testResetsFeedScheduleForMilkAndSolidsChoice() {
+        let bottle = activity(id: "b", type: .BOTTLE_FEED, start: 1_000)
+        let breast = activity(id: "bf", type: .BREASTFEED, start: 2_000)
+        let keeps = activity(id: "s1", type: .SOLIDS, start: 3_000, solids: SolidsDetails(.LUNCH, ["Peas"], resetsFeedSchedule: false))
+        let replaces = activity(id: "s2", type: .SOLIDS, start: 4_000, solids: SolidsDetails(.DINNER, ["Rice"], resetsFeedSchedule: true))
+        let legacy = activity(id: "s3", type: .SOLIDS, start: 5_000, solids: SolidsDetails(.SNACK, ["Banana"]))
+        XCTAssertTrue(ReminderLogic.resetsFeedSchedule(bottle))
+        XCTAssertTrue(ReminderLogic.resetsFeedSchedule(breast))
+        XCTAssertFalse(ReminderLogic.resetsFeedSchedule(keeps))
+        XCTAssertTrue(ReminderLogic.resetsFeedSchedule(replaces))
+        XCTAssertTrue(ReminderLogic.resetsFeedSchedule(legacy))
+    }
+
+    func testSolidsDraftDefaultsToKeepingMilkScheduleAndRoundTrips() {
+        let draft = EntryDraft(startTime: 1_000, mealType: .LUNCH, foods: ["Avocado"], solidsResetsFeedSchedule: false)
+        XCTAssertFalse(draft.solidsResetsFeedSchedule)
+        let row = EntryBuilder.build(.SOLIDS, draft, EntryContext(
+            familyId: "f", profileId: "p", caregiverId: "c", timeZone: "UTC", now: 1_000, newId: { "id" }
+        ))[0]
+        XCTAssertEqual(row.solids?.resetsFeedSchedule, false)
+        XCTAssertFalse(EntryBuilder.draftOf(row).solidsResetsFeedSchedule)
+
+        let replace = EntryBuilder.build(.SOLIDS, draft.with { $0.solidsResetsFeedSchedule = true }, EntryContext(
+            familyId: "f", profileId: "p", caregiverId: "c", timeZone: "UTC", now: 1_000, newId: { "id2" }
+        ))[0]
+        XCTAssertEqual(replace.solids?.resetsFeedSchedule, true)
+        XCTAssertTrue(EntryBuilder.draftOf(replace).solidsResetsFeedSchedule)
+    }
 }
 
 final class GrowthPercentilesTests: XCTestCase {

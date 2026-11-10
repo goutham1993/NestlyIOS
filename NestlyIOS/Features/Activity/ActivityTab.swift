@@ -7,6 +7,8 @@ struct DashboardData: Sendable, Equatable {
     var growth: [ActivityEntity] = []
     var latestMedical: ActivityEntity?
     var latestVaccine: ActivityEntity?
+    /// Latest feed that anchors next-feeding (skips solids that keep the milk schedule).
+    var scheduleFeed: ActivityEntity?
     var feedInterval = ReminderLogic.defaultIntervalMinutes(.FEED)
 
     static let feedTypes: [ActivityType] = [.BOTTLE_FEED, .BREASTFEED, .SOLIDS]
@@ -18,6 +20,7 @@ struct DashboardData: Sendable, Equatable {
         let yesterday = LocalDate.today(zone).minusDays(1).startOfDayMs(zone)
         async let recent = a.range(familyId: f, profileId: p, from: yesterday, to: nowMs() + 86_400_000)
         async let feed = a.latestOf(familyId: f, profileId: p, feedTypes)
+        async let schedule = a.latestFeedForSchedule(familyId: f, profileId: p)
         async let pump = a.latestOf(familyId: f, profileId: nil, [.PUMP])
         async let diaper = a.latestOf(familyId: f, profileId: p, [.DIAPER])
         async let sleep = a.latestOf(familyId: f, profileId: p, [.SLEEP])
@@ -38,7 +41,8 @@ struct DashboardData: Sendable, Equatable {
         return DashboardData(
             recent: try await recent, latest: latest, growth: try await growth.filter { $0.profileId == p },
             latestMedical: try await medical, latestVaccine: try await vaccine,
-            feedInterval: interval ?? ReminderLogic.defaultIntervalMinutes(.FEED)
+            scheduleFeed: try await schedule,
+            feedInterval: interval ?? repos.prefs.defaultFeedIntervalMinutes
         )
     }
 }
@@ -436,7 +440,7 @@ private struct AtAGlance: View {
             guard let latest else { return .empty("Track a feeding") }
             var footnote: String?
             var footnoteTint: Color = .secondary
-            let next = ReminderLogic.nextFeedState(latest.startTime, data.feedInterval, now: now)
+            let next = ReminderLogic.nextFeedState(data.scheduleFeed?.startTime, data.feedInterval, now: now)
             if let text = Format.nextFeeding(next) {
                 footnote = text.replacingOccurrences(of: "Next feeding", with: "Next")
                 if case .overdue = next { footnoteTint = Palette.warning }

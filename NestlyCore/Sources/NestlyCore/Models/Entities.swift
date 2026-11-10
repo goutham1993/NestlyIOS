@@ -96,10 +96,13 @@ public struct MilestoneDetails: Equatable, Hashable, Sendable {
 public struct SolidsDetails: Equatable, Hashable, Sendable {
     public var mealType: MealType?
     public var foods: [String]
+    /// When true, this solids entry anchors next-feed / FEED reminders like milk.
+    public var resetsFeedSchedule: Bool
 
-    public init(_ mealType: MealType?, _ foods: [String] = []) {
+    public init(_ mealType: MealType?, _ foods: [String] = [], resetsFeedSchedule: Bool = true) {
         self.mealType = mealType
         self.foods = foods
+        self.resetsFeedSchedule = resetsFeedSchedule
     }
 }
 

@@ -120,6 +120,7 @@ Unique: `(family_id, name)`, `(family_id, user_id)`.
 | `milestone_title, milestone_key` | text (key like `m6_3`, see milestones.json) |
 | `solids_meal_type` | `BREAKFAST, LUNCH, DINNER, SNACK` |
 | `solids_foods` | `text[]` |
+| `solids_resets_feed_schedule` | bool (default true). When false, SOLIDS does not move next-feed / FEED reminders. |
 | `routine_name` | text |
 | `baby_first_title` | text |
 | `medical_temperature_c` | numeric |
@@ -377,7 +378,7 @@ Rendered in `card_order`, only if visible (§11.6). Each card (except Health) ha
 - **Feed** — Add opens a picker of enabled kinds among Breastfeed, Bottle, Solids, Combo, **always plus Vitamin D**. Rows:
   - "Last feeding": time-ago + value (oz 1 decimal / mL integer, or breastfeed duration). Feed types = BOTTLE_FEED, BREASTFEED, SOLIDS.
   - If a breast timer is running: in-progress "Breastfeeding" row with elapsed.
-  - "Next feeding": `Format.nextFeeding` (§13) using last feed + interval.
+  - "Next feeding": `Format.nextFeeding` (§13) using the latest **schedule-resetting** feed + interval (bottle, breastfeed, or solids with `solids_resets_feed_schedule = true`). Solids that keep the milk schedule do not move this.
   - Today list **expanded by default**.
 - **Pump** — "Last session" + amount; in-progress row when the pump timer runs.
 - **Diaper** — "Last change" + type label. Footer reads "View History".
@@ -453,6 +454,7 @@ Port `reference/EntryModel.kt`, `reference/EntryBuilder.kt`, `reference/EntryCon
 - **PUMP** rows: `profile_id = null`.
 - **Breastfeed**: `end = start + left + right`. Begin/end side default to whichever side is non-zero (LEFT if both). `breast_is_manual_entry` preserved from existing row (false for new).
 - **Bottle**: `bottle_total_ml = amount`; `bottle_breast_milk_ml` only for BREAST_MILK; `bottle_formula_ml` + `bottle_formula_name` only for FORMULA.
+- **Solids**: `solids_meal_type`, `solids_foods`, `solids_resets_feed_schedule` from draft (new drafts default `false` / keep milk schedule; missing DB value treated as `true` for back-compat).
 - **Pump**: `end = start + seconds` when seconds > 0, else `end = null` (in progress); `pump_duration_sec = seconds`; left/right only in LEFT_RIGHT mode; total = left+right in LEFT_RIGHT mode, else entered total.
 - **Diaper**: type = MIXED if wet&dirty, else DIRTY / WET / DRY. Color & texture only if dirty. `diaper_has_rash`.
 - **Sleep**: `end_time` from draft.
@@ -486,7 +488,7 @@ Port `reference/EntryModel.kt`, `reference/EntryBuilder.kt`, `reference/EntryCon
 ### 12.5 Forms
 - **Breastfeed**: Left and Right timer buttons (readout `MM:SS` under 1 h, `H:MM` after; tap to start/pause; long-press/edit to type a duration), last-side hint, Start Time, Total Time (sum).
 - **Bottle**: Breast Milk / Formula choice (each option shown only if its toggle is enabled or already selected), Start Time, Amount (display units), "Use last amount" row, Formula name (when Formula).
-- **Solids**: Breakfast/Lunch/Dinner/Snack, Start Time, food multi-select from catalog + "+ Add your own" (custom foods for this entry).
+- **Solids**: Breakfast/Lunch/Dinner/Snack, Start Time, **Milk schedule** choice (Keeps milk schedule / Replaces milk feed; default Keeps on new), food multi-select from catalog + "+ Add your own" (custom foods for this entry).
 - **Combo**: segmented control Breastfeed | Bottle Feed, showing the respective sub-form; both parts can be filled.
 - **Pump**: mode "Left / Right" | "Total" (default Total); stopwatch with Start Timer / Pause / Resume Timer and Reset; Start Time; Total Time (editable); amounts (left & right, or total).
 - **Diaper**: Time; toggles Wet, Dirty, Dry (Dry clears the others; Wet/Dirty clear Dry); if Dirty: Color chips (with swatches) and Texture chips (Runny, Mushy, Solid, Mucousy, Seedy, Hard); Diaper Rash switch.
@@ -682,7 +684,7 @@ Rows: **Family**, **Settings**, **Subscription**, **Help**. Section "Data": **Im
 Screen rows: **Import from Nara**, **Export Nestly CSV**, **Import Nestly CSV**, a result/status message, and "Activities in Nestly" with per-type counts (`fetchCountsByType`). Use `fileImporter` (types: csv, tsv, plain text, xlsx, xml, html) and `fileExporter`/ShareLink for export.
 
 ### 19.1 Nestly CSV (port `reference/NestlyCsv.kt` + `NestlyCsvRoundTripTest`)
-- UTF-8 **with BOM**, RFC 4180 quoting, header columns exactly as in the reference (record, id, familyId, profileId, name, birthDate, sex, profileType, type, startTime, endTime, timeZone, note, photoUri, comboGroupId, createdById, updatedById, createdAt, updatedAt, bottle_*, pump_*, breast_*, diaper_*, growth_*, milestone_title, milestone_milestoneKey, solids_mealType, solids_foods, routine_name, babyFirst_title, medical_*, vaccine_vaccines).
+- UTF-8 **with BOM**, RFC 4180 quoting, header columns exactly as in the reference (record, id, familyId, profileId, name, birthDate, sex, profileType, type, startTime, endTime, timeZone, note, photoUri, comboGroupId, createdById, updatedById, createdAt, updatedAt, bottle_*, pump_*, breast_*, diaper_*, growth_*, milestone_title, milestone_milestoneKey, solids_mealType, solids_foods, solids_resetsFeedSchedule, routine_name, babyFirst_title, medical_*, vaccine_vaccines).
 - `record` ∈ FAMILY, CAREGIVER, PROFILE, ACTIVITY. Times = epoch ms. Lists joined with `|`.
 - Export: all my families, their caregivers, profiles, active activities sorted by start time. Filename `nestly_export_{yyyy-MM-dd}.csv`.
 - Import: upsert families, caregivers (**forced name-only**: `user_id = null`), profiles, activities (chunks of 200). Bump all ticks after.
@@ -709,6 +711,7 @@ Port `reference/ReminderLogic.kt`, `AppointmentReminderLogic.kt`, `DailyDose.kt`
 
 ### 20.1 Interval reminders
 - Kind → activity types: FEED = BOTTLE_FEED, BREASTFEED, SOLIDS; PUMP = PUMP; DIAPER = DIAPER; SLEEP = SLEEP.
+- FEED clock anchor = latest among bottle/breastfeed and solids with `solids_resets_feed_schedule = true` (`ReminderLogic.resetsFeedSchedule` / `latestFeedForSchedule`). Solids that keep the milk schedule are ignored for FEED notifications and next-feeding.
 - `nextFireMs = lastStart + interval`; if already past → `now + 1 min`.
 - If nothing logged of that kind → no notification.
 - Notification: title "{Kind} reminder" (Feed/Pump/Diaper/Sleep), body "Time to log the next {kind}." (lowercase kind). Identifier `reminder-{reminderId}` (replace on reschedule). Fires once; next schedule happens on the next reschedule.

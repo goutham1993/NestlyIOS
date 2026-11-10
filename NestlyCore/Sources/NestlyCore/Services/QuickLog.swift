@@ -134,7 +134,10 @@ public extension QuickVitaminDResult {
 /// Everything the "Next feed" widget and the nightstand show.
 public struct FeedSnapshot: Sendable, Equatable {
     public var childName: String
+    /// Newest bottle / breastfeed / solids (including solids that keep the milk schedule).
     public var lastFeed: ActivityEntity?
+    /// Latest feed that anchors next-feed / FEED reminders (skips non-resetting solids).
+    public var scheduleFeed: ActivityEntity?
     public var intervalMinutes: Int
     public var vitaminDGivenAt: EpochMs?
     public var todayFeedCount: Int
@@ -142,14 +145,16 @@ public struct FeedSnapshot: Sendable, Equatable {
     /// Average gap between today's feed sessions; nil with fewer than two.
     public var todayAvgIntervalMs: EpochMs? = nil
 
-    public var nextDueMs: EpochMs? { ReminderLogic.nextFeedDueMs(lastFeed?.startTime, intervalMinutes) }
+    public var nextDueMs: EpochMs? { ReminderLogic.nextFeedDueMs(scheduleFeed?.startTime, intervalMinutes) }
 
-    public func state(now: EpochMs) -> NextFeedState { ReminderLogic.nextFeedState(lastFeed?.startTime, intervalMinutes, now: now) }
+    public func state(now: EpochMs) -> NextFeedState { ReminderLogic.nextFeedState(scheduleFeed?.startTime, intervalMinutes, now: now) }
 
     public static func placeholder(now: EpochMs = nowMs()) -> FeedSnapshot {
-        FeedSnapshot(
+        let last = ActivityEntity(id: "p", familyId: "f", profileId: "c", type: .BOTTLE_FEED, startTime: now - 75 * 60_000, timeZone: TimeZone.current.identifier, bottle: BottleDetails(totalMl: 120), createdAt: now, updatedAt: now)
+        return FeedSnapshot(
             childName: "Baby",
-            lastFeed: ActivityEntity(id: "p", familyId: "f", profileId: "c", type: .BOTTLE_FEED, startTime: now - 75 * 60_000, timeZone: TimeZone.current.identifier, bottle: BottleDetails(totalMl: 120), createdAt: now, updatedAt: now),
+            lastFeed: last,
+            scheduleFeed: last,
             intervalMinutes: 180, vitaminDGivenAt: nil, todayFeedCount: 4, todayBottleMl: 480
         )
     }
@@ -178,9 +183,10 @@ public enum FeedSnapshotLoader {
             let start = today.startOfDayMs(zone)
             let todayRows = try await repos.activities.range(familyId: profile.familyId, profileId: profile.id, from: start, to: today.plusDays(1).startOfDayMs(zone))
             let last = try await repos.activities.latestOf(familyId: profile.familyId, profileId: profile.id, feedTypes)
+            let schedule = try await repos.activities.latestFeedForSchedule(familyId: profile.familyId, profileId: profile.id)
             let reminders = (try? await repos.reminders.fetchMine()) ?? []
             let interval = reminders.first { $0.kind == .FEED && $0.profileId == profile.id }?.intervalMinutes
-                ?? ReminderLogic.defaultIntervalMinutes(.FEED)
+                ?? repos.prefs.defaultFeedIntervalMinutes
             let feeds = todayRows.filter { feedTypes.contains($0.type) }
             let sessionStarts = Dictionary(grouping: feeds) { $0.comboGroupId ?? $0.id }
                 .values.compactMap { $0.map(\.startTime).min() }.sorted()
@@ -189,6 +195,7 @@ public enum FeedSnapshotLoader {
             return .ready(FeedSnapshot(
                 childName: profile.name,
                 lastFeed: last,
+                scheduleFeed: schedule,
                 intervalMinutes: interval,
                 vitaminDGivenAt: DailyDose.givenAt(todayRows, startOfToday: start, startOfTomorrow: today.plusDays(1).startOfDayMs(zone)),
                 todayFeedCount: sessions,

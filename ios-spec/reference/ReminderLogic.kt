@@ -1,5 +1,6 @@
 package com.lifestyle.nestly.data.reminder
 
+import com.lifestyle.nestly.data.model.ActivityEntity
 import com.lifestyle.nestly.data.model.ActivityType
 import com.lifestyle.nestly.data.model.ReminderKind
 
@@ -9,6 +10,16 @@ object ReminderLogic {
         ReminderKind.PUMP -> listOf(ActivityType.PUMP)
         ReminderKind.DIAPER -> listOf(ActivityType.DIAPER)
         ReminderKind.SLEEP -> listOf(ActivityType.SLEEP)
+    }
+
+    /**
+     * Whether this activity anchors the milk / FEED reminder clock.
+     * Bottle and breastfeed always do; solids only when marked as a milk replacement.
+     */
+    fun resetsFeedSchedule(activity: ActivityEntity): Boolean = when (activity.type) {
+        ActivityType.BOTTLE_FEED, ActivityType.BREASTFEED -> true
+        ActivityType.SOLIDS -> activity.solids?.resetsFeedSchedule ?: true
+        else -> false
     }
 
     /**

@@ -335,11 +335,19 @@ final class NestlyCsvRoundTripTests: XCTestCase {
     }
 
     func testValuesUseAndroidFormatting() {
-        let a = ActivityEntity(id: "x", familyId: "f", profileId: "p", type: .SOLIDS, startTime: 5, timeZone: "UTC", note: "a, \"b\"", solids: SolidsDetails(.LUNCH, ["Rice", "Peas"]), createdAt: 1, updatedAt: 2)
+        let a = ActivityEntity(id: "x", familyId: "f", profileId: "p", type: .SOLIDS, startTime: 5, timeZone: "UTC", note: "a, \"b\"", solids: SolidsDetails(.LUNCH, ["Rice", "Peas"], resetsFeedSchedule: false), createdAt: 1, updatedAt: 2)
         let row = NestlyCsv.activityRow(a)
         XCTAssertTrue(row.contains("\"a, \"\"b\"\"\""))
-        XCTAssertTrue(row.contains("LUNCH,Rice|Peas"))
+        XCTAssertTrue(row.contains("LUNCH,Rice|Peas,false"))
         XCTAssertEqual(NestlyCsv.num(120), "120.0")
+    }
+
+    func testSolidsResetsFeedScheduleSurvivesExportAndParse() throws {
+        let keep = ActivityEntity(id: "s1", familyId: "f", profileId: "p", type: .SOLIDS, startTime: 10, timeZone: "UTC", solids: SolidsDetails(.SNACK, ["Banana"], resetsFeedSchedule: false), createdAt: 1, updatedAt: 2)
+        let replace = ActivityEntity(id: "s2", familyId: "f", profileId: "p", type: .SOLIDS, startTime: 20, timeZone: "UTC", solids: SolidsDetails(.LUNCH, ["Peas"], resetsFeedSchedule: true), createdAt: 1, updatedAt: 2)
+        let rows = CsvParser.parseRecords(NestlyCsv.document(families: [], caregivers: [], profiles: [], activities: [keep, replace]))
+        XCTAssertEqual(try NestlyCsv.parseActivity(rows[0], now: 0).solids?.resetsFeedSchedule, false)
+        XCTAssertEqual(try NestlyCsv.parseActivity(rows[1], now: 0).solids?.resetsFeedSchedule, true)
     }
 }
 

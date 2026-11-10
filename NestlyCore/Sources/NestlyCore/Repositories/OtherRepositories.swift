@@ -23,7 +23,8 @@ public struct ReminderRepository: Sendable {
         let now = nowMs()
         let row = ReminderEntity(
             id: newUUID(), familyId: familyId, caregiverId: caregiverId, profileId: scopeProfile, kind: kind,
-            intervalMinutes: ReminderLogic.defaultIntervalMinutes(kind), enabled: false, createdAt: now, updatedAt: now
+            intervalMinutes: kind == .FEED ? backend.prefs.defaultFeedIntervalMinutes : ReminderLogic.defaultIntervalMinutes(kind),
+            enabled: false, createdAt: now, updatedAt: now
         )
         try await backend.insert(Self.table, row.toDto())
         backend.bus.bump(.reminder)

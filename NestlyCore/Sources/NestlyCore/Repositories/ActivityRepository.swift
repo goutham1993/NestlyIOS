@@ -55,6 +55,19 @@ public struct ActivityRepository: Sendable {
         try await latestOf(familyId: familyId, profileId: type == .PUMP ? nil : profileId, [type])
     }
 
+    /// Latest feed that should move the milk / FEED reminder clock (bottle, breastfeed, or
+    /// solids marked as a milk replacement). Skips solids that keep the milk schedule.
+    public func latestFeedForSchedule(familyId: String, profileId: String) async throws -> ActivityEntity? {
+        let types = ReminderLogic.typesFor(.FEED).map(\.rawValue)
+        let dtos: [ActivityDto] = try await base(familyId)
+            .eq("profile_id", value: profileId)
+            .in("type", values: types)
+            .order("start_time", ascending: false)
+            .limit(30)
+            .execute().value
+        return try dtos.lazy.map { try $0.toEntity() }.first { ReminderLogic.resetsFeedSchedule($0) }
+    }
+
     public func get(_ id: String) async throws -> ActivityEntity? {
         let dtos: [ActivityDto] = try await backend.from(Self.table).select().eq("id", value: id).is("deleted_at", value: nil).execute().value
         return try dtos.first?.toEntity()

@@ -343,6 +343,34 @@ struct SolidsFields: View {
             }
             StartRow(c: c)
         }
+        Section {
+            Text("Does this replace a milk feed?")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            HStack(spacing: Space.m) {
+                SelectTile(
+                    title: "Keeps milk schedule",
+                    icon: .system("clock"),
+                    selected: !c.draft.solidsResetsFeedSchedule,
+                    subtitle: "Next feed stays on the current clock",
+                    tint: CardKind.FEED.color
+                ) {
+                    withAnimation(.snappy) { c.draft.solidsResetsFeedSchedule = false }
+                }
+                SelectTile(
+                    title: "Replaces milk feed",
+                    icon: .bottle,
+                    selected: c.draft.solidsResetsFeedSchedule,
+                    subtitle: "Restarts the next-feed timer",
+                    tint: CardKind.FEED.color
+                ) {
+                    withAnimation(.snappy) { c.draft.solidsResetsFeedSchedule = true }
+                }
+            }
+            .padding(.vertical, Space.xs)
+        } header: {
+            Text("Milk schedule")
+        }
         Section("Food") {
             let custom = c.draft.foods.filter { !Catalogs.foods.contains($0) }
             ChipFlow(items: Catalogs.foods + custom, label: { $0 }, isSelected: { c.draft.foods.contains($0) }, tint: CardKind.FEED.color) { food in

@@ -97,7 +97,7 @@ public enum EntryBuilder {
                 totalMl: d.bottleMl
             )
         case .SOLIDS:
-            row.solids = SolidsDetails(d.mealType, d.foods)
+            row.solids = SolidsDetails(d.mealType, d.foods, resetsFeedSchedule: d.solidsResetsFeedSchedule)
         case .PUMP:
             // No duration yet → leave end open so the session can be finished later.
             row.endTime = d.pumpSec > 0 ? d.startTime + d.pumpSec * 1000 : nil
@@ -183,6 +183,7 @@ public enum EntryBuilder {
             endSide: a.breastfeed?.endSide,
             mealType: a.solids?.mealType,
             foods: a.solids?.foods ?? [],
+            solidsResetsFeedSchedule: a.solids?.resetsFeedSchedule ?? true,
             pumpMode: (a.pump?.leftMl != nil || a.pump?.rightMl != nil) ? .LEFT_RIGHT : .TOTAL,
             pumpSec: a.pump?.durationSec ?? 0,
             pumpLeftMl: a.pump?.leftMl,

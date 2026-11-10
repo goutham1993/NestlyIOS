@@ -78,6 +78,8 @@ data class EntryDraft(
 
     val mealType: MealType? = null,
     val foods: List<String> = emptyList(),
+    /** Solids only: false = keep milk schedule (default for new), true = replace milk feed. */
+    val solidsResetsFeedSchedule: Boolean = false,
 
     val pumpMode: PumpMode = PumpMode.TOTAL,
     val pumpSec: Long = 0,

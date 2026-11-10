@@ -106,6 +106,9 @@ create table public.activity (
 
     solids_meal_type          text check (solids_meal_type in ('BREAKFAST', 'LUNCH', 'DINNER', 'SNACK')),
     solids_foods              text[],
+    -- When true (default), SOLIDS counts as the last feed for next-feed / FEED reminders.
+    -- New solids entries can set false to keep the milk schedule. Bottle/breastfeed always reset.
+    solids_resets_feed_schedule boolean not null default true,
 
     routine_name              text,
 
@@ -779,4 +782,8 @@ create policy note_delete on public.note for delete to authenticated
     using (family_id in (select private.my_family_ids()));
 
 alter publication supabase_realtime add table public.note;
+
+-- ===== solids_resets_feed_schedule (apply on existing projects) =====
+-- alter table public.activity
+--     add column if not exists solids_resets_feed_schedule boolean not null default true;
 

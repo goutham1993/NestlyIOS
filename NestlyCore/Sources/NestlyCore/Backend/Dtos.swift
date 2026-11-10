@@ -327,6 +327,7 @@ public struct ActivityDto: Codable, Equatable, Sendable {
 
     public var solidsMealType: MealType?
     public var solidsFoods: [String]?
+    public var solidsResetsFeedSchedule: Bool?
 
     public var routineName: String?
     public var babyFirstTitle: String?
@@ -362,6 +363,7 @@ public struct ActivityDto: Codable, Equatable, Sendable {
         case growthWeightKg = "growth_weight_kg", growthHeightCm = "growth_height_cm", growthHeadCm = "growth_head_cm"
         case milestoneTitle = "milestone_title", milestoneKey = "milestone_key"
         case solidsMealType = "solids_meal_type", solidsFoods = "solids_foods"
+        case solidsResetsFeedSchedule = "solids_resets_feed_schedule"
         case routineName = "routine_name", babyFirstTitle = "baby_first_title"
         case medicalTemperatureC = "medical_temperature_c", medicalMedicationName = "medical_medication_name"
         case medicalDose = "medical_dose", medicalDoseUnit = "medical_dose_unit"
@@ -420,6 +422,7 @@ public struct ActivityDto: Codable, Equatable, Sendable {
         milestoneKey = try c.decodeIfPresent(String.self, forKey: .milestoneKey)
         solidsMealType = try c.decodeIfPresent(MealType.self, forKey: .solidsMealType)
         solidsFoods = try c.decodeIfPresent([String].self, forKey: .solidsFoods)
+        solidsResetsFeedSchedule = try c.decodeIfPresent(Bool.self, forKey: .solidsResetsFeedSchedule)
         routineName = try c.decodeIfPresent(String.self, forKey: .routineName)
         babyFirstTitle = try c.decodeIfPresent(String.self, forKey: .babyFirstTitle)
         medicalTemperatureC = try c.decodeIfPresent(Double.self, forKey: .medicalTemperatureC)
@@ -473,6 +476,7 @@ public struct ActivityDto: Codable, Equatable, Sendable {
         try c.put(milestoneKey, .milestoneKey)
         try c.put(solidsMealType, .solidsMealType)
         try c.put(solidsFoods, .solidsFoods)
+        try c.put(solidsResetsFeedSchedule, .solidsResetsFeedSchedule)
         try c.put(routineName, .routineName)
         try c.put(babyFirstTitle, .babyFirstTitle)
         try c.put(medicalTemperatureC, .medicalTemperatureC)
@@ -492,7 +496,7 @@ public struct ActivityDto: Codable, Equatable, Sendable {
         let hasBottle = bottleMilkType != nil || bottleTotalMl != nil || bottleBreastMilkMl != nil || bottleFormulaMl != nil || bottleFormulaName != nil
         let hasBreast = breastLeftDurationSec != nil || breastRightDurationSec != nil
         let hasGrowth = growthWeightKg != nil || growthHeightCm != nil || growthHeadCm != nil
-        let hasSolids = solidsMealType != nil || solidsFoods != nil
+        let hasSolids = type == .SOLIDS || solidsMealType != nil || solidsFoods != nil || solidsResetsFeedSchedule != nil
         let hasMedical = medicalTemperatureC != nil || medicalMedicationName != nil || medicalDose != nil
         return ActivityEntity(
             id: id,
@@ -511,7 +515,7 @@ public struct ActivityDto: Codable, Equatable, Sendable {
             diaper: diaperType.map { DiaperDetails($0, color: diaperColor, texture: diaperTexture, detail: diaperDetail, hasRash: diaperHasRash) },
             growth: hasGrowth ? GrowthDetails(growthWeightKg, growthHeightCm, growthHeadCm) : nil,
             milestone: milestoneTitle.map { MilestoneDetails($0, milestoneKey) },
-            solids: hasSolids ? SolidsDetails(solidsMealType, solidsFoods ?? []) : nil,
+            solids: hasSolids ? SolidsDetails(solidsMealType, solidsFoods ?? [], resetsFeedSchedule: solidsResetsFeedSchedule ?? true) : nil,
             routine: routineName.map(RoutineDetails.init),
             babyFirst: babyFirstTitle.map(BabyFirstDetails.init),
             medical: hasMedical ? MedicalDetails(temperatureC: medicalTemperatureC, medicationName: medicalMedicationName, dose: medicalDose, doseUnit: medicalDoseUnit) : nil,
@@ -559,6 +563,7 @@ public extension ActivityEntity {
         d.milestoneKey = milestone?.milestoneKey
         d.solidsMealType = solids?.mealType
         d.solidsFoods = solids?.foods
+        d.solidsResetsFeedSchedule = type == .SOLIDS ? (solids?.resetsFeedSchedule ?? true) : nil
         d.routineName = routine?.name
         d.babyFirstTitle = babyFirst?.title
         d.medicalTemperatureC = medical?.temperatureC

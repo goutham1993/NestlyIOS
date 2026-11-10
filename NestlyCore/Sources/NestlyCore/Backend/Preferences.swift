@@ -18,6 +18,7 @@ public final class Preferences: @unchecked Sendable {
         static let unitLength = "unit_length"
         static let unitTemperature = "unit_temperature"
         static let defaultBottleMl = "default_bottle_ml"
+        static let defaultFeedIntervalMinutes = "default_feed_interval_minutes"
         static let pendingCaregiverName = "pending_caregiver_name"
     }
 
@@ -30,6 +31,8 @@ public final class Preferences: @unchecked Sendable {
     public private(set) var filters: Set<FilterOption>
     public private(set) var units: UnitPrefs
     public private(set) var defaultBottleMl: Double?
+    /// Minutes between feeds for the next-feed countdown. Defaults to 3 hours.
+    public private(set) var defaultFeedIntervalMinutes: Int
 
     public init(defaults: UserDefaults) {
         self.defaults = defaults
@@ -48,6 +51,12 @@ public final class Preferences: @unchecked Sendable {
         )
         let ml = defaults.object(forKey: Key.defaultBottleMl) as? Double
         defaultBottleMl = (ml ?? 0) > 0 ? ml : nil
+        if defaults.object(forKey: Key.defaultFeedIntervalMinutes) != nil {
+            let minutes = defaults.integer(forKey: Key.defaultFeedIntervalMinutes)
+            defaultFeedIntervalMinutes = minutes > 0 ? minutes : ReminderLogic.defaultIntervalMinutes(.FEED)
+        } else {
+            defaultFeedIntervalMinutes = ReminderLogic.defaultIntervalMinutes(.FEED)
+        }
     }
 
     /// Re-reads values another process (widget / intent) may have written.
@@ -56,6 +65,7 @@ public final class Preferences: @unchecked Sendable {
         if fresh.selectedProfileId != selectedProfileId { selectedProfileId = fresh.selectedProfileId }
         if fresh.currentCaregiverId != currentCaregiverId { currentCaregiverId = fresh.currentCaregiverId }
         if fresh.defaultBottleMl != defaultBottleMl { defaultBottleMl = fresh.defaultBottleMl }
+        if fresh.defaultFeedIntervalMinutes != defaultFeedIntervalMinutes { defaultFeedIntervalMinutes = fresh.defaultFeedIntervalMinutes }
         if fresh.units != units { units = fresh.units }
     }
 
@@ -97,6 +107,13 @@ public final class Preferences: @unchecked Sendable {
         let value = (ml ?? 0) > 0 ? ml : nil
         defaultBottleMl = value
         if let value { defaults.set(value, forKey: Key.defaultBottleMl) } else { defaults.removeObject(forKey: Key.defaultBottleMl) }
+    }
+
+    /// At least one minute. Stored in minutes; 180 is 3 hours.
+    public func setDefaultFeedIntervalMinutes(_ minutes: Int) {
+        let value = max(minutes, 1)
+        defaultFeedIntervalMinutes = value
+        defaults.set(value, forKey: Key.defaultFeedIntervalMinutes)
     }
 
     /// Caregiver name typed at sign-up when email confirmation delayed the session.

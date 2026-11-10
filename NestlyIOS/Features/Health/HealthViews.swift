@@ -326,7 +326,9 @@ struct RemindersView: View {
         .navigationTitle("Reminders")
         .sheet(item: $editing) { reminder in
             DurationEditor(title: "\(ReminderLogic.label(reminder.kind)) interval", initialSeconds: Int64(reminder.intervalMinutes) * 60, showSeconds: false) { seconds in
-                update(reminder.with { $0.intervalMinutes = max(1, Int(seconds / 60)) })
+                let minutes = max(1, Int(seconds / 60))
+                if reminder.kind == .FEED { app.repos.prefs.setDefaultFeedIntervalMinutes(minutes) }
+                update(reminder.with { $0.intervalMinutes = minutes })
             }
         }
         .live([.reminder], id: "\(profile?.id ?? "")-\(caregiverId ?? "")", into: $reminders) { [profile, caregiverId] in

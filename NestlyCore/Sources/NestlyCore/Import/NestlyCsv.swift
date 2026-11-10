@@ -15,7 +15,7 @@ public enum NestlyCsv {
         "diaper_diaperType", "diaper_color", "diaper_texture", "diaper_detail", "diaper_hasRash",
         "growth_weightKg", "growth_heightCm", "growth_headCm",
         "milestone_title", "milestone_milestoneKey",
-        "solids_mealType", "solids_foods",
+        "solids_mealType", "solids_foods", "solids_resetsFeedSchedule",
         "routine_name", "babyFirst_title",
         "medical_temperatureC", "medical_medicationName", "medical_dose", "medical_doseUnit",
         "vaccine_vaccines",
@@ -98,6 +98,7 @@ public enum NestlyCsv {
         if let s = a.solids {
             m["solids_mealType"] = s.mealType?.rawValue
             m["solids_foods"] = s.foods.joined(separator: LIST_SEP)
+            m["solids_resetsFeedSchedule"] = s.resetsFeedSchedule ? "true" : "false"
         }
         if let r = a.routine { m["routine_name"] = r.name }
         if let b = a.babyFirst { m["babyFirst_title"] = b.title }
@@ -238,8 +239,12 @@ public enum NestlyCsv {
     }
 
     private static func solidsOf(_ row: [String: String]) -> SolidsDetails? {
-        guard row["solids_mealType"] != nil || row["solids_foods"] != nil else { return nil }
-        return SolidsDetails(row["solids_mealType"].flatMap(MealType.init(rawValue:)), row["solids_foods"].map(split) ?? [])
+        guard row["solids_mealType"] != nil || row["solids_foods"] != nil || row["solids_resetsFeedSchedule"] != nil else { return nil }
+        return SolidsDetails(
+            row["solids_mealType"].flatMap(MealType.init(rawValue:)),
+            row["solids_foods"].map(split) ?? [],
+            resetsFeedSchedule: bool(row["solids_resetsFeedSchedule"]) ?? true
+        )
     }
 
     private static func medicalOf(_ row: [String: String]) -> MedicalDetails? {

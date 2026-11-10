@@ -25,6 +25,16 @@ public enum ReminderLogic {
         }
     }
 
+    /// Whether this activity anchors the milk / FEED reminder clock.
+    /// Bottle and breastfeed always do; solids only when marked as a milk replacement.
+    public static func resetsFeedSchedule(_ activity: ActivityEntity) -> Bool {
+        switch activity.type {
+        case .BOTTLE_FEED, .BREASTFEED: return true
+        case .SOLIDS: return activity.solids?.resetsFeedSchedule ?? true
+        default: return false
+        }
+    }
+
     /// When the next notification should fire. If the due time is already past, schedules a
     /// catch-up one minute from [now] so something still alerts once.
     public static func nextFireMs(_ lastActivityStart: EpochMs?, _ intervalMinutes: Int, now: EpochMs = nowMs()) -> EpochMs? {
