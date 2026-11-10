@@ -527,6 +527,7 @@ Port behavior from Android `ui/history`.
 - **Week strip**: 7 days, week start = `Calendar.current.firstWeekday`; month label(s); previous-week arrow (and next, not beyond the current week); horizontal swipe changes week. Tapping a day selects it.
 - **7×24 timeline grid**: columns = days, rows = hours. Each entry is a colored bar in its category color at its start time; duration types (sleep, breastfeed, pump) span their duration. Tap a bar → edit entry. Tap a column → select that day. Night bands shaded before 06:00 and after 18:00. Dashed lines every 3 h. A "now" line on today.
 - **Selected-day list**: header "Weekday, Mon d" + "N entries" (or "Nothing logged."), then rows (§11.7), tap to edit.
+- When filters are active and the day has matching rows, show a **day summary** above the list: one line per present activity type (same order/details as §11.4 Summary) with count + totals (e.g. Feed+Pump → bottle/breastfeed/solids/pump lines with volumes/durations).
 - Filters apply to grid and list. Data = activities in the visible week (range query).
 
 ---

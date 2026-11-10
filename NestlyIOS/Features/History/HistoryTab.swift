@@ -151,6 +151,9 @@ struct HistoryTab: View {
         let from = selected.startOfDayMs(zone), to = selected.plusDays(1).startOfDayMs(zone)
         let rows = all.filter { $0.startTime >= from && $0.startTime < to }.sorted { $0.startTime > $1.startTime }
         let bars = Bars.fractions(rows)
+        let summaryLines = prefs.filters.isEmpty || rows.isEmpty
+            ? []
+            : Summary.summarize(rows, from: from, to: to, prefs: prefs.units)
         HStack(alignment: .firstTextBaseline) {
             SectionTitle(Format.dateText(selected, "EEEE, MMM d"))
             Spacer()
@@ -159,6 +162,9 @@ struct HistoryTab: View {
                 .contentTransition(.numericText())
         }
         .padding(.top, Space.s)
+        if !summaryLines.isEmpty {
+            DayFilterSummary(lines: summaryLines)
+        }
         Card(padding: Space.m) {
             if entries == nil {
                 ProgressView().frame(maxWidth: .infinity).padding(Space.l)
@@ -182,6 +188,40 @@ struct HistoryTab: View {
             }
         }
         .animation(.snappy, value: selected)
+    }
+}
+
+/// Per-type counts + totals for the filtered selected day (spec §14).
+private struct DayFilterSummary: View {
+    let lines: [SummaryLine]
+
+    var body: some View {
+        Card(padding: Space.m) {
+            VStack(spacing: 0) {
+                ForEach(Array(lines.enumerated()), id: \.element.type) { index, line in
+                    if index > 0 { Divider().padding(.vertical, Space.s) }
+                    HStack(alignment: .top, spacing: Space.m) {
+                        IconTile(icon: line.type.icon, tint: line.type.color, size: 30)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(line.type.displayName).font(.subheadline.weight(.semibold))
+                            if !line.details.isEmpty {
+                                Text(line.details.joined(separator: " · "))
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        Spacer(minLength: 0)
+                        Text("\(line.count)")
+                            .font(.rounded(.title3, weight: .bold))
+                            .monospacedDigit()
+                            .foregroundStyle(line.type.color)
+                            .contentTransition(.numericText())
+                            .accessibilityLabel(line.count == 1 ? "1 entry" : "\(line.count) entries")
+                    }
+                }
+            }
+        }
+        .accessibilityElement(children: .contain)
     }
 }
 
