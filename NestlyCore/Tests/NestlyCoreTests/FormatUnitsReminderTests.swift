@@ -353,8 +353,16 @@ final class EntryBuilderTests: XCTestCase {
     func testCanSaveRequiresContent() {
         XCTAssertFalse(EntryBuilder.canSave(.DIAPER, EntryDraft(startTime: 0)))
         XCTAssertTrue(EntryBuilder.canSave(.DIAPER, EntryDraft(startTime: 0, dry: true)))
+        XCTAssertFalse(EntryBuilder.canSave(.SLEEP, EntryDraft(startTime: 10, startTimeSet: false)))
         XCTAssertFalse(EntryBuilder.canSave(.SLEEP, EntryDraft(startTime: 10, endTime: 5)))
+        XCTAssertTrue(EntryBuilder.canSave(.SLEEP, EntryDraft(startTime: 10, startTimeSet: true)))
         XCTAssertTrue(EntryBuilder.canSave(.SLEEP, EntryDraft(startTime: 10, endTime: 20)))
+        XCTAssertFalse(EntryBuilder.canSave(.PUMP, EntryDraft(startTime: 0, startTimeSet: false)))
+        XCTAssertTrue(EntryBuilder.canSave(.PUMP, EntryDraft(startTime: 0, startTimeSet: true)))
+        XCTAssertTrue(EntryBuilder.canSave(.PUMP, EntryDraft(startTime: 0, startTimeSet: false, pumpTotalMl: 40)))
+        let openPump = EntryBuilder.build(.PUMP, EntryDraft(startTime: 1_000, startTimeSet: true), ctx)[0]
+        XCTAssertNil(openPump.endTime)
+        XCTAssertEqual(openPump.pump?.durationSec, 0)
     }
 
     func testEditKeepsIdAndCreatedFields() {

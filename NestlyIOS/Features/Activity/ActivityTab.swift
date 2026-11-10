@@ -61,7 +61,6 @@ struct ActivityTab: View {
                 Clock(interval: timers.values.contains(where: \.isRunning) ? 1 : 30) { now in
                     ScrollView {
                         VStack(alignment: .leading, spacing: Space.xl) {
-                            ChildHeader(profile: profile, now: now)
                             TimerBanners(timers: timers, now: now)
                             QuickLogRow(cards: visibleCards)
                             if let data {
@@ -84,6 +83,10 @@ struct ActivityTab: View {
                         .animation(.snappy, value: timers)
                     }
                     .background(Color(.systemGroupedBackground))
+                    .safeAreaInset(edge: .top, spacing: 0) {
+                        activityTopBar(profile: profile, now: now)
+                    }
+                    .toolbar(.hidden, for: .navigationBar)
                 }
                 .live([.activity, .reminder], id: profile.id, into: $data) {
                     try await DashboardData.load(.shared, profile)
@@ -95,28 +98,65 @@ struct ActivityTab: View {
         .navigationTitle("Activity")
         .navigationBarTitleDisplayMode(.inline)
         .hiddenNavigationTitle()
-        .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Button { showSummary = true } label: { Image(systemName: "list.bullet.rectangle.portrait") }
-                    .accessibilityLabel("Summary")
-            }
-            ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    Button { app.push(.reminders) } label: { Label("Set Reminders", systemImage: "bell") }
-                    Button { app.push(.appointments) } label: { Label("Doctor Appointments", systemImage: "calendar") }
-                    Button { app.push(.notes) } label: { Label("Notes", systemImage: "note.text") }
-                    Button { app.push(.editActivities) } label: { Label("Edit Activities", systemImage: "slider.horizontal.3") }
-                    Divider()
-                    Button { app.showNightstand = true } label: { Label("Nightstand Mode", systemImage: "moon.stars") }
-                } label: { Image(systemName: "ellipsis.circle") }
-                    .accessibilityLabel("More")
-            }
-        }
         .sheet(isPresented: $showSummary) { SummarySheet(entries: data?.recent ?? []) }
         .onReceive(NotificationCenter.default.publisher(for: ActiveTimerStore.didChange)) { _ in
             timers = TimerControl.store.timers()
         }
         .onAppear { timers = TimerControl.store.timers() }
+    }
+
+    private func activityTopBar(profile: ProfileEntity, now: EpochMs) -> some View {
+        HStack(alignment: .center, spacing: Space.m) {
+            ChildHeader(profile: profile, now: now)
+            Spacer(minLength: Space.s)
+            topActions
+        }
+        .padding(.horizontal, Space.l)
+        .padding(.top, Space.xs)
+        .padding(.bottom, Space.s)
+        .background(Color(.systemGroupedBackground))
+    }
+
+    private var topActions: some View {
+        HStack(spacing: Space.m) {
+            Button { showSummary = true } label: { Image(systemName: "list.bullet.rectangle.portrait") }
+                .accessibilityLabel("Summary")
+                .modifier(ActionDisc())
+            moreMenu.modifier(ActionDisc())
+        }
+    }
+
+    private var moreMenu: some View {
+        Menu {
+            Button { app.push(.reminders) } label: { Label("Set Reminders", systemImage: "bell") }
+            Button { app.push(.appointments) } label: { Label("Doctor Appointments", systemImage: "calendar") }
+            Button { app.push(.notes) } label: { Label("Notes", systemImage: "note.text") }
+            Button { app.push(.editActivities) } label: { Label("Edit Activities", systemImage: "slider.horizontal.3") }
+            Divider()
+            Button { app.showNightstand = true } label: { Label("Nightstand Mode", systemImage: "moon.stars") }
+        } label: { Image(systemName: "ellipsis") }
+            .accessibilityLabel("More")
+    }
+}
+
+/// Circular action sized to the child monogram, so it holds its own next to the large name.
+private struct ActionDisc: ViewModifier {
+    func body(content: Content) -> some View {
+        Group {
+            if #available(iOS 26.0, *) {
+                disc(content).glassEffect(.regular.interactive(), in: Circle())
+            } else {
+                disc(content).background(Palette.accent.opacity(0.15), in: Circle())
+            }
+        }
+    }
+
+    private func disc(_ content: Content) -> some View {
+        content
+            .font(.system(size: 22, weight: .semibold))
+            .foregroundStyle(Palette.accent)
+            .frame(width: 52, height: 52)
+            .buttonStyle(.plain)
     }
 }
 
@@ -150,9 +190,12 @@ private struct ChildHeader: View {
                 } else {
                     name
                 }
-                Text(subtitle).font(.subheadline).foregroundStyle(.secondary)
+                Text(subtitle)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
             }
-            Spacer(minLength: 0)
         }
         .accessibilityElement(children: .combine)
     }
@@ -402,6 +445,9 @@ private struct AtAGlance: View {
             return .value(Format.ago(latest.startTime, now: now), detail: feedValue(latest), footnote: footnote, footnoteTint: footnoteTint)
         case .PUMP:
             guard let latest else { return .empty("Track a pumping session") }
+            if latest.endTime == nil, (latest.pump?.durationSec ?? 0) == 0 {
+                return .value(Format.ago(latest.startTime, now: now), detail: "Pumping since \(Format.time(latest.startTime))")
+            }
             return .value(Format.ago(latest.startTime, now: now), detail: latest.pump?.totalMl.map { Format.volume($0, prefs.units) })
         case .DIAPER:
             guard let latest else { return .empty("Track a diaper change") }
@@ -412,6 +458,9 @@ private struct AtAGlance: View {
                 return .value(Format.duration(sleep.elapsedMs(now) / 1000), detail: "Sleeping since \(Format.time(sleep.sessionStart ?? now))", live: true)
             }
             guard let latest else { return .empty("Track a sleep session") }
+            if latest.endTime == nil {
+                return .value(Format.ago(latest.startTime, now: now), detail: "Sleeping since \(Format.time(latest.startTime))")
+            }
             return .value(Format.ago(latest.endTime ?? latest.startTime, now: now), detail: latest.durationSec.map { "Slept \(Format.duration($0))" })
         case .ROUTINE:
             guard let latest else { return .empty("Track a routine or create your own") }

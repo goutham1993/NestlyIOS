@@ -36,9 +36,13 @@ object EntryBuilder {
         EntryKind.BOTTLE -> d.bottleMl != null || d.milkType != null
         EntryKind.SOLIDS -> d.mealType != null || d.foods.isNotEmpty()
         EntryKind.COMBO -> canSave(EntryKind.BREASTFEED, d) || canSave(EntryKind.BOTTLE, d)
-        EntryKind.PUMP -> d.pumpSec > 0 || d.pumpTotalComputed != null
+        // Start-only is allowed so a session can be logged in progress and finished later.
+        EntryKind.PUMP -> d.startTimeSet || d.pumpSec > 0 || d.pumpTotalComputed != null
         EntryKind.DIAPER -> d.wet || d.dirty || d.dry
-        EntryKind.SLEEP -> d.endTime != null && d.endTime > d.startTime
+        EntryKind.SLEEP -> when {
+            d.endTime != null -> d.endTime > d.startTime
+            else -> d.startTimeSet
+        }
         EntryKind.ROUTINE -> !d.routineName.isNullOrBlank()
         EntryKind.BABY_FIRST -> d.babyFirstTitle.isNotBlank()
         EntryKind.GROWTH -> d.weightKg != null || d.heightCm != null || d.headCm != null
@@ -102,7 +106,8 @@ object EntryBuilder {
             )
             EntryKind.SOLIDS -> common.copy(solids = SolidsDetails(d.mealType, d.foods))
             EntryKind.PUMP -> common.copy(
-                endTime = d.startTime + d.pumpSec * 1000,
+                // No duration yet → leave end open so the session can be finished later.
+                endTime = if (d.pumpSec > 0) d.startTime + d.pumpSec * 1000 else null,
                 pump = PumpDetails(
                     durationSec = d.pumpSec,
                     leftMl = d.pumpLeftMl.takeIf { d.pumpMode == PumpMode.LEFT_RIGHT },

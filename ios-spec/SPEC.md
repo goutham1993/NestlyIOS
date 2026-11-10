@@ -438,9 +438,9 @@ Port `reference/EntryModel.kt`, `reference/EntryBuilder.kt`, `reference/EntryCon
 | Bottle | amount > 0 or a milk type chosen |
 | Solids | meal chosen or ≥ 1 food |
 | Combo | breastfeed part saveable or bottle part saveable |
-| Pump | seconds > 0 or computed total > 0 |
+| Pump | start time set, or seconds > 0, or computed total > 0 (start-only = in-progress; finish later) |
 | Diaper | wet or dirty or dry |
-| Sleep | end > start |
+| Sleep | start time set with no end, or end > start (start-only = in-progress; set end later) |
 | Routine | name non-blank |
 | Baby First | title non-blank |
 | Growth | any measurement |
@@ -453,7 +453,7 @@ Port `reference/EntryModel.kt`, `reference/EntryBuilder.kt`, `reference/EntryCon
 - **PUMP** rows: `profile_id = null`.
 - **Breastfeed**: `end = start + left + right`. Begin/end side default to whichever side is non-zero (LEFT if both). `breast_is_manual_entry` preserved from existing row (false for new).
 - **Bottle**: `bottle_total_ml = amount`; `bottle_breast_milk_ml` only for BREAST_MILK; `bottle_formula_ml` + `bottle_formula_name` only for FORMULA.
-- **Pump**: `end = start + seconds`; `pump_duration_sec = seconds`; left/right only in LEFT_RIGHT mode; total = left+right in LEFT_RIGHT mode, else entered total.
+- **Pump**: `end = start + seconds` when seconds > 0, else `end = null` (in progress); `pump_duration_sec = seconds`; left/right only in LEFT_RIGHT mode; total = left+right in LEFT_RIGHT mode, else entered total.
 - **Diaper**: type = MIXED if wet&dirty, else DIRTY / WET / DRY. Color & texture only if dirty. `diaper_has_rash`.
 - **Sleep**: `end_time` from draft.
 - **Medical**: draft temperature is in the display unit; store °C. Medication name, dose (text), dose unit.

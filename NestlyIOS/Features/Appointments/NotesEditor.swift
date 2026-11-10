@@ -93,7 +93,10 @@ struct FormattedNotesSection: View {
                     formatButton("list.number", "Numbered list") { handle.format(.NUMBERED) }
                     formatButton("checklist", "Checklist") { handle.format(.CHECKBOX) }
                     Spacer()
-                    Button("Done") { handle.done() }
+                    Button("Done") {
+                        handle.done()
+                        withAnimation(.snappy) { preview = true }
+                    }
                         .font(.subheadline.weight(.semibold))
                         .buttonStyle(.borderless)
                 }

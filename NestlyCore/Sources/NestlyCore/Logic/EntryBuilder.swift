@@ -33,11 +33,12 @@ public enum EntryBuilder {
         case .BOTTLE: return d.bottleMl != nil || d.milkType != nil
         case .SOLIDS: return d.mealType != nil || !d.foods.isEmpty
         case .COMBO: return canSave(.BREASTFEED, d) || canSave(.BOTTLE, d)
-        case .PUMP: return d.pumpSec > 0 || d.pumpTotalComputed != nil
+        // Start-only is allowed so a session can be logged in progress and finished later.
+        case .PUMP: return d.startTimeSet || d.pumpSec > 0 || d.pumpTotalComputed != nil
         case .DIAPER: return d.wet || d.dirty || d.dry
         case .SLEEP:
-            guard let end = d.endTime else { return false }
-            return end > d.startTime
+            if let end = d.endTime { return end > d.startTime }
+            return d.startTimeSet
         case .ROUTINE: return !d.routineName.isNullOrBlank
         case .BABY_FIRST: return !d.babyFirstTitle.isBlank
         case .GROWTH: return d.weightKg != nil || d.heightCm != nil || d.headCm != nil
@@ -98,7 +99,8 @@ public enum EntryBuilder {
         case .SOLIDS:
             row.solids = SolidsDetails(d.mealType, d.foods)
         case .PUMP:
-            row.endTime = d.startTime + d.pumpSec * 1000
+            // No duration yet → leave end open so the session can be finished later.
+            row.endTime = d.pumpSec > 0 ? d.startTime + d.pumpSec * 1000 : nil
             row.pump = PumpDetails(
                 durationSec: d.pumpSec,
                 leftMl: d.pumpMode == .LEFT_RIGHT ? d.pumpLeftMl : nil,

@@ -98,8 +98,16 @@ class EntryBuilderTest {
     fun canSaveRequiresContent() {
         assertFalse(EntryBuilder.canSave(EntryKind.DIAPER, EntryDraft(startTime = 0)))
         assertTrue(EntryBuilder.canSave(EntryKind.DIAPER, EntryDraft(startTime = 0, dry = true)))
+        assertFalse(EntryBuilder.canSave(EntryKind.SLEEP, EntryDraft(startTime = 10, startTimeSet = false)))
         assertFalse(EntryBuilder.canSave(EntryKind.SLEEP, EntryDraft(startTime = 10, endTime = 5)))
+        assertTrue(EntryBuilder.canSave(EntryKind.SLEEP, EntryDraft(startTime = 10, startTimeSet = true)))
         assertTrue(EntryBuilder.canSave(EntryKind.SLEEP, EntryDraft(startTime = 10, endTime = 20)))
+        assertFalse(EntryBuilder.canSave(EntryKind.PUMP, EntryDraft(startTime = 0, startTimeSet = false)))
+        assertTrue(EntryBuilder.canSave(EntryKind.PUMP, EntryDraft(startTime = 0, startTimeSet = true)))
+        assertTrue(EntryBuilder.canSave(EntryKind.PUMP, EntryDraft(startTime = 0, startTimeSet = false, pumpTotalMl = 40.0)))
+        val openPump = EntryBuilder.build(EntryKind.PUMP, EntryDraft(startTime = 1_000, startTimeSet = true), ctx).single()
+        assertNull(openPump.endTime)
+        assertEquals(0L, openPump.pump?.durationSec)
     }
 
     @Test
