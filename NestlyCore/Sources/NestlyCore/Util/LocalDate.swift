@@ -2,7 +2,7 @@ import Foundation
 
 public typealias EpochMs = Int64
 
-public func nowMs() -> EpochMs { EpochMs((Date().timeIntervalSince1970 * 1000).rounded(.down)) }
+@Sendable public func nowMs() -> EpochMs { EpochMs((Date().timeIntervalSince1970 * 1000).rounded(.down)) }
 
 public extension Date {
     var epochMs: EpochMs { EpochMs((timeIntervalSince1970 * 1000).rounded(.down)) }

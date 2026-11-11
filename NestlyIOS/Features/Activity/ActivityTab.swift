@@ -170,10 +170,17 @@ private struct ChildHeader: View {
     let profile: ProfileEntity
     let now: EpochMs
     @Environment(FamilyStore.self) private var family
+    @Environment(AppModel.self) private var app
+    @State private var viewingPhoto = false
 
     var body: some View {
         HStack(spacing: Space.m) {
-            ChildAvatar(name: profile.name, photoPath: profile.photoPath, size: 56)
+            Button { viewingPhoto = true } label: {
+                ChildAvatar(name: profile.name, photoPath: profile.photoPath, size: 56)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(profile.photoPath == nil ? "Add photo of \(profile.name)" : "\(profile.name)'s photo")
+            .accessibilityHint("Shows the photo larger")
             VStack(alignment: .leading, spacing: 2) {
                 let profiles = family.profiles ?? []
                 if profiles.count > 1 {
@@ -200,8 +207,18 @@ private struct ChildHeader: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
             }
+            .accessibilityElement(children: .combine)
         }
-        .accessibilityElement(children: .combine)
+        .fullScreenCover(isPresented: $viewingPhoto) {
+            ProfilePhotoViewer(name: profile.name, photoPath: profile.photoPath) {
+                viewingPhoto = false
+                let id = profile.id
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 350_000_000)
+                    app.openChildPhoto(id)
+                }
+            }
+        }
     }
 
     private var name: some View {

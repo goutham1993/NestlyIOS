@@ -95,9 +95,9 @@
 		DF559F5E798016925FCADF38 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		E026CC86E9E56C18AF61B275 /* NightstandView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NightstandView.swift; sourceTree = "<group>"; };
 		E2D1D83B75B0D341A7DDB65D /* NestlyWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = NestlyWidgets.entitlements; sourceTree = "<group>"; };
-		E8012F38558F9B870F011C93 /* NestlyIOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = NestlyIOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		E8012F38558F9B870F011C93 /* NestlyIOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NestlyIOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		EB401D291F2579CF22AAC7EB /* NestlyIcons.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = NestlyIcons.xcassets; sourceTree = "<group>"; };
-		ECB6801EDE21CE4B4687ECEA /* NestlyCore */ = {isa = PBXFileReference; lastKnownFileType = folder; name = NestlyCore; path = NestlyCore; sourceTree = SOURCE_ROOT; };
+		ECB6801EDE21CE4B4687ECEA /* NestlyCore */ = {isa = PBXFileReference; lastKnownFileType = folder; path = NestlyCore; sourceTree = SOURCE_ROOT; };
 		F6C2BEE9B7FC6F5DB0010256 /* GrowthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GrowthView.swift; sourceTree = "<group>"; };
 		F8AC43F303FE143F4A43FA30 /* FamilyStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FamilyStore.swift; sourceTree = "<group>"; };
 		FECEB9E2EDCEDF9C1EC2F6AE /* ActivityTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityTab.swift; sourceTree = "<group>"; };
@@ -368,7 +368,6 @@
 						ProvisioningStyle = Automatic;
 					};
 					BD9B19C652DD02007F9EF241 = {
-						DevelopmentTeam = 3TN6G8DQVM;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -474,6 +473,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = NestlyIOS/NestlyIOS.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = 3TN6G8DQVM;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = NestlyIOS/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -510,6 +510,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = NestlyIOS/NestlyIOS.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = 3TN6G8DQVM;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = NestlyIOS/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (

@@ -309,17 +309,240 @@ struct RemotePhoto: View {
 }
 
 enum PhotoEncoding {
+    /// Upright image for the crop screen. Long edge is capped so a camera original stays easy to pan.
+    static func image(from data: Data, maxEdge: CGFloat = 3072) -> UIImage? {
+        guard let image = UIImage(data: data) else { return nil }
+        return scaled(upright(image), maxEdge: maxEdge)
+    }
+
     /// Re-encodes as JPEG (≈0.85, long edge ≤ 2048 px) — spec §3.6.
     static func jpeg(from data: Data) -> Data? {
         guard let image = UIImage(data: data) else { return nil }
-        let maxEdge: CGFloat = 2048
-        let size = image.size
-        let scale = min(1, maxEdge / max(size.width, size.height))
-        let target = CGSize(width: (size.width * scale).rounded(), height: (size.height * scale).rounded())
+        return jpeg(from: image)
+    }
+
+    static func jpeg(from image: UIImage) -> Data? {
+        scaled(upright(image), maxEdge: 2048).jpegData(compressionQuality: 0.85)
+    }
+
+    /// Visible square after the crop preview's cover-scale, pinch, and pan. `viewSize` is the square's side in points.
+    static func cropSquare(image: UIImage, viewSize: CGFloat, scale: CGFloat, offset: CGSize) -> UIImage {
+        guard viewSize > 0, let cg = image.cgImage else { return image }
+        let srcW = image.size.width
+        let srcH = image.size.height
+        guard srcW > 1, srcH > 1 else { return image }
+        let userScale = min(5, max(1, scale))
+        let cover = max(viewSize / srcW, viewSize / srcH)
+        let drawW = srcW * cover * userScale
+        let drawH = srcH * cover * userScale
+        let left = viewSize / 2 + offset.width - drawW / 2
+        let top = viewSize / 2 + offset.height - drawH / 2
+        let srcX = min(max(0, (0 - left) / drawW * srcW), srcW - 1)
+        let srcY = min(max(0, (0 - top) / drawH * srcH), srcH - 1)
+        let side = max(1, min(viewSize / drawW * srcW, viewSize / drawH * srcH, srcW - srcX, srcH - srcY))
+        let pixelX = srcX * CGFloat(cg.width) / srcW
+        let pixelY = srcY * CGFloat(cg.height) / srcH
+        let pixelSide = side * min(CGFloat(cg.width) / srcW, CGFloat(cg.height) / srcH)
+        let bounds = CGRect(x: 0, y: 0, width: cg.width, height: cg.height)
+        let rect = CGRect(x: pixelX, y: pixelY, width: pixelSide, height: pixelSide).integral.intersection(bounds)
+        let square = min(rect.width, rect.height)
+        let squared = CGRect(x: rect.minX, y: rect.minY, width: square, height: square).intersection(bounds)
+        guard squared.width >= 1, squared.height >= 1, let cropped = cg.cropping(to: squared) else { return image }
+        return UIImage(cgImage: cropped, scale: image.scale, orientation: .up)
+    }
+
+    /// How far the photo can slide before the square shows empty space.
+    static func clampOffset(_ offset: CGSize, scale: CGFloat, viewSize: CGFloat, imageSize: CGSize) -> CGSize {
+        guard viewSize > 0, imageSize.width > 0, imageSize.height > 0 else { return .zero }
+        let userScale = min(5, max(1, scale))
+        let cover = max(viewSize / imageSize.width, viewSize / imageSize.height)
+        let maxX = max(0, (imageSize.width * cover * userScale - viewSize) / 2)
+        let maxY = max(0, (imageSize.height * cover * userScale - viewSize) / 2)
+        return CGSize(
+            width: min(maxX, max(-maxX, offset.width)),
+            height: min(maxY, max(-maxY, offset.height))
+        )
+    }
+
+    private static func upright(_ image: UIImage) -> UIImage {
+        guard image.imageOrientation != .up else { return image }
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = image.scale
+        format.opaque = true
+        return UIGraphicsImageRenderer(size: image.size, format: format).image { _ in
+            image.draw(in: CGRect(origin: .zero, size: image.size))
+        }
+    }
+
+    private static func scaled(_ image: UIImage, maxEdge: CGFloat) -> UIImage {
+        let edge = max(image.size.width, image.size.height)
+        guard edge > maxEdge else { return image }
+        let ratio = maxEdge / edge
+        let target = CGSize(width: (image.size.width * ratio).rounded(), height: (image.size.height * ratio).rounded())
         let format = UIGraphicsImageRendererFormat()
         format.scale = 1
-        let resized = UIGraphicsImageRenderer(size: target, format: format).image { _ in image.draw(in: CGRect(origin: .zero, size: target)) }
-        return resized.jpegData(compressionQuality: 0.85)
+        format.opaque = true
+        return UIGraphicsImageRenderer(size: target, format: format).image { _ in
+            image.draw(in: CGRect(origin: .zero, size: target))
+        }
+    }
+}
+
+/// Square crop. Drag and pinch to frame the photo; the circle is how the avatar will look.
+struct PhotoCropView: View {
+    let image: UIImage
+    let onCancel: () -> Void
+    let onUse: (UIImage) -> Void
+
+    @State private var scale: CGFloat = 1
+    @State private var offset: CGSize = .zero
+    @State private var viewSize: CGFloat = 0
+    @State private var baseScale: CGFloat = 1
+    @State private var baseOffset: CGSize = .zero
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Button("Cancel", action: onCancel)
+                    .foregroundStyle(.white)
+                Spacer()
+                Text("Crop")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                Spacer()
+                Button("Use Photo") {
+                    onUse(PhotoEncoding.cropSquare(image: image, viewSize: viewSize, scale: scale, offset: offset))
+                }
+                .fontWeight(.semibold)
+                .foregroundStyle(Palette.accent)
+            }
+            .font(.body.weight(.semibold))
+            .padding(.horizontal, Space.s)
+            .frame(minHeight: 52)
+
+            GeometryReader { geo in
+                let side = min(geo.size.width, geo.size.height)
+                ZStack {
+                    cropImage(side: side)
+                    CropDim()
+                        .frame(width: side, height: side)
+                        .allowsHitTesting(false)
+                }
+                .frame(width: side, height: side)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .contentShape(Rectangle())
+                .gesture(drag)
+                .simultaneousGesture(magnify)
+                .onAppear { viewSize = side }
+                .onChange(of: side) { _, new in viewSize = new }
+            }
+
+            Text("Drag and pinch to frame the photo.")
+                .font(.footnote)
+                .foregroundStyle(.white.opacity(0.8))
+                .padding(.bottom, Space.xl)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.black.ignoresSafeArea())
+        .preferredColorScheme(.dark)
+    }
+
+    private func cropImage(side: CGFloat) -> some View {
+        let cover = max(side / image.size.width, side / image.size.height)
+        let drawW = image.size.width * cover * scale
+        let drawH = image.size.height * cover * scale
+        return Image(uiImage: image)
+            .resizable()
+            .frame(width: drawW, height: drawH)
+            .offset(offset)
+            .frame(width: side, height: side)
+            .clipped()
+    }
+
+    private var drag: some Gesture {
+        DragGesture()
+            .onChanged { value in
+                offset = PhotoEncoding.clampOffset(
+                    CGSize(width: baseOffset.width + value.translation.width, height: baseOffset.height + value.translation.height),
+                    scale: scale,
+                    viewSize: viewSize,
+                    imageSize: image.size
+                )
+            }
+            .onEnded { _ in baseOffset = offset }
+    }
+
+    private var magnify: some Gesture {
+        MagnificationGesture()
+            .onChanged { value in
+                let next = min(5, max(1, baseScale * value))
+                scale = next
+                offset = PhotoEncoding.clampOffset(offset, scale: next, viewSize: viewSize, imageSize: image.size)
+            }
+            .onEnded { _ in
+                baseScale = scale
+                offset = PhotoEncoding.clampOffset(offset, scale: scale, viewSize: viewSize, imageSize: image.size)
+                baseOffset = offset
+            }
+    }
+}
+
+/// Dims everything outside the circle the avatar will use.
+private struct CropDim: View {
+    var body: some View {
+        Canvas { context, size in
+            var path = Path()
+            path.addRect(CGRect(origin: .zero, size: size))
+            path.addEllipse(in: CGRect(origin: .zero, size: size))
+            context.fill(path, with: .color(.black.opacity(0.55)), style: FillStyle(eoFill: true))
+            context.stroke(Path(ellipseIn: CGRect(origin: .zero, size: size)), with: .color(.white.opacity(0.9)), lineWidth: 2)
+        }
+    }
+}
+
+/// Full-screen child photo, like a WhatsApp profile picture, with a way through to the editor.
+struct ProfilePhotoViewer: View {
+    let name: String
+    var photoPath: String?
+    let onChange: () -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        GeometryReader { geo in
+            let side = min(geo.size.width - 64, geo.size.height * 0.72)
+            ZStack {
+                Color.black
+                    .contentShape(Rectangle())
+                    .onTapGesture { dismiss() }
+                VStack(spacing: 0) {
+                    HStack {
+                        Button { dismiss() } label: {
+                            Image(systemName: "xmark")
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(.white)
+                                .frame(width: 44, height: 44)
+                        }
+                        .accessibilityLabel("Close")
+                        Text(name)
+                            .font(.headline)
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                            .frame(maxWidth: .infinity)
+                        Color.clear.frame(width: 44, height: 44)
+                    }
+                    Spacer()
+                    ChildAvatar(name: name, photoPath: photoPath, size: max(side, 1))
+                    Spacer()
+                    Button(photoPath == nil ? "Add photo" : "Change photo", action: onChange)
+                        .font(.headline)
+                        .foregroundStyle(Palette.accent)
+                        .padding(.bottom, Space.xl)
+                }
+            }
+            .frame(width: geo.size.width, height: geo.size.height)
+        }
+        .background(Color.black.ignoresSafeArea())
+        .preferredColorScheme(.dark)
     }
 }
 
@@ -339,6 +562,8 @@ struct ChildForm: View {
     @State private var caregiverName = ""
     @State private var photoPath: String?
     @State private var photoItem: PhotosPickerItem?
+    @State private var cropImage: UIImage?
+    @State private var readingPhoto = false
     @State private var didLoad = false
     @State private var saving = false
     @State private var error: String?
@@ -410,25 +635,52 @@ struct ChildForm: View {
             }
             .onChange(of: photoItem) { _, picked in
                 guard let picked else { return }
+                readingPhoto = true
                 Task {
-                    defer { photoItem = nil }
-                    guard let data = try? await picked.loadTransferable(type: Data.self), let jpeg = PhotoEncoding.jpeg(from: data) else {
+                    defer {
+                        photoItem = nil
+                        readingPhoto = false
+                    }
+                    guard let data = try? await picked.loadTransferable(type: Data.self), let image = PhotoEncoding.image(from: data) else {
                         error = "Couldn't read that photo."
                         return
                     }
-                    do {
-                        photoPath = try PhotoStore.stageLocal(jpeg)
-                        error = nil
-                    } catch {
-                        self.error = "Couldn't read that photo."
+                    cropImage = image
+                }
+            }
+            .fullScreenCover(isPresented: cropPresented) {
+                if let cropImage {
+                    PhotoCropView(image: cropImage, onCancel: { self.cropImage = nil }) { cropped in
+                        applyCrop(cropped)
                     }
                 }
             }
         }
     }
 
+    private var cropPresented: Binding<Bool> {
+        Binding(get: { cropImage != nil }, set: { if !$0 { cropImage = nil } })
+    }
+
+    private func applyCrop(_ image: UIImage) {
+        guard let jpeg = PhotoEncoding.jpeg(from: image) else {
+            error = "Couldn't read that photo."
+            cropImage = nil
+            return
+        }
+        do {
+            photoPath = try PhotoStore.stageLocal(jpeg)
+            error = nil
+        } catch {
+            self.error = "Couldn't read that photo."
+        }
+        cropImage = nil
+    }
+
     @ViewBuilder private var photoActions: some View {
-        if photoPath == nil {
+        if readingPhoto {
+            ProgressView()
+        } else if photoPath == nil {
             PhotosPicker(selection: $photoItem, matching: .images) {
                 Label("Add Photo", systemImage: "camera")
             }
