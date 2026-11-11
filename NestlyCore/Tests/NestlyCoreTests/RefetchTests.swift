@@ -41,6 +41,26 @@ final class RefetchTests: XCTestCase {
         XCTAssertNil(cleared)
     }
 
+    func testTimeoutDoesNotBlameTheDeviceConnection() async {
+        let errors = await DataErrors()
+        await errors.report(URLError(.timedOut))
+        let message = await errors.message
+        let offline = await errors.offline
+        let expected = await DataErrors.defaultMessage
+        XCTAssertEqual(message, expected)
+        XCTAssertFalse(offline)
+    }
+
+    func testMissingDeviceConnectionIsCalledOffline() async {
+        let errors = await DataErrors()
+        await errors.report(URLError(.notConnectedToInternet))
+        let message = await errors.message
+        let offline = await errors.offline
+        let expected = await DataErrors.offlineMessage
+        XCTAssertEqual(message, expected)
+        XCTAssertTrue(offline)
+    }
+
     func testFailedFirstFetchEmitsNothingUntilARefetchSucceeds() async throws {
         let bus = RefreshBus()
         let errors = await DataErrors()

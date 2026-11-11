@@ -205,7 +205,7 @@ Ticks are bumped by:
 - **Auth gating** (`refetchWhenAuthenticated`): do not fetch until the auth status is `.signedIn`. Anonymous reads during session restore return empty results and would wrongly route to onboarding. When the auth user changes, restart.
 
 ### 4.3 DataErrors (global banner)
-Single observable `message: String?`. Default message: "Couldn't reach the server. Check your connection." The root view shows a dismissible banner with a **Retry** action (bumpAll) whenever it's non-nil.
+Single observable `message: String?` plus `offline: Bool`. A device-offline error (`notConnectedToInternet`, `networkConnectionLost`, `dataNotAllowed`, `internationalRoamingOff`) uses "You're offline. Try again when you have a connection." A timeout or any other failure uses "Nestly didn't respond. Try again in a moment." The root view shows a dismissible banner with a **Retry** action (bumpAll) whenever `message` is non-nil. The full-screen gate uses the wifi icon only when `offline` is true.
 
 ### 4.4 RealtimeSync
 - Starts after sign-in. Family id = selected profile's `family_id` (wait up to 20 s for profiles), else first fetched profile's family, else first fetched family's id.

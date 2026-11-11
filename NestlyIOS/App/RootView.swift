@@ -48,7 +48,7 @@ struct RootView: View {
                     LoadingView(text: "Loading your family…")
                 }
             } else if let message = errors.message {
-                ErrorScreen(message: message) { app.repos.backend.bus.bumpAll() }
+                ErrorScreen(message: message, offline: errors.offline) { app.repos.backend.bus.bumpAll() }
             } else {
                 LoadingView(text: "Loading your family…")
             }
@@ -181,7 +181,7 @@ struct ErrorBanner: View {
     var body: some View {
         if let message = errors.message {
             HStack(spacing: Space.m) {
-                Image(systemName: "wifi.exclamationmark")
+                Image(systemName: errors.offline ? "wifi.slash" : "exclamationmark.triangle")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Palette.critical)
                 Text(message).font(.footnote).frame(maxWidth: .infinity, alignment: .leading)
@@ -221,10 +221,16 @@ struct LoadingView: View {
 
 struct ErrorScreen: View {
     let message: String
+    var offline = false
     let retry: () -> Void
 
     var body: some View {
-        EmptyStateView(icon: .system("wifi.exclamationmark"), tint: Palette.critical, title: "Couldn't reach Nestly", message: message) {
+        EmptyStateView(
+            icon: .system(offline ? "wifi.slash" : "exclamationmark.triangle"),
+            tint: Palette.critical,
+            title: offline ? "You're offline" : "Nestly didn't respond",
+            message: message
+        ) {
             Button("Try Again", action: retry).buttonStyle(.primary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

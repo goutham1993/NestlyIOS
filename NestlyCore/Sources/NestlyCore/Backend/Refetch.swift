@@ -57,19 +57,43 @@ public final class RefreshBus: @unchecked Sendable {
 @Observable
 public final class DataErrors {
     public static let shared = DataErrors()
-    public static let defaultMessage = "Couldn't reach the server. Check your connection."
+    /// The device has no usable connection.
+    public static let offlineMessage = "You're offline. Try again when you have a connection."
+    /// The request failed while the device was online, including a server timeout.
+    public static let defaultMessage = "Nestly didn't respond. Try again in a moment."
 
     public private(set) var message: String?
+    /// True only when the failure is the device's own connection, not a slow or failed server.
+    public private(set) var offline = false
 
     public init() {}
 
     public func report(_ error: Error? = nil) {
-        message = Self.defaultMessage
+        offline = Self.isDeviceOffline(error)
+        message = offline ? Self.offlineMessage : Self.defaultMessage
     }
 
     public func clear() {
         message = nil
+        offline = false
     }
+
+    /// Timeouts and server errors are not an offline device. Only the codes that mean the
+    /// phone itself has no route are treated as a connection problem.
+    public static func isDeviceOffline(_ error: Error?) -> Bool {
+        guard let error else { return false }
+        if let url = error as? URLError, Self.offlineCodes.contains(url.code) { return true }
+        let ns = error as NSError
+        if ns.domain == NSURLErrorDomain, Self.offlineCodes.contains(URLError.Code(rawValue: ns.code)) { return true }
+        if let underlying = ns.userInfo[NSUnderlyingErrorKey] as? Error {
+            return isDeviceOffline(underlying)
+        }
+        return false
+    }
+
+    private static let offlineCodes: Set<URLError.Code> = [
+        .notConnectedToInternet, .networkConnectionLost, .dataNotAllowed, .internationalRoamingOff,
+    ]
 }
 
 /// A version-checked update matched no row: someone else changed it first.
