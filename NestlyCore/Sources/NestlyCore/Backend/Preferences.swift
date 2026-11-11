@@ -20,6 +20,7 @@ public final class Preferences: @unchecked Sendable {
         static let defaultBottleMl = "default_bottle_ml"
         static let defaultFeedIntervalMinutes = "default_feed_interval_minutes"
         static let pendingCaregiverName = "pending_caregiver_name"
+        static let photoPromptDismissed = "photo_prompt_dismissed"
     }
 
     @ObservationIgnored private let defaults: UserDefaults
@@ -33,6 +34,8 @@ public final class Preferences: @unchecked Sendable {
     public private(set) var defaultBottleMl: Double?
     /// Minutes between feeds for the next-feed countdown. Defaults to 3 hours.
     public private(set) var defaultFeedIntervalMinutes: Int
+    /// Profile id → milestone id hidden by Not Now on this device.
+    public private(set) var dismissedPhotoPrompts: [String: String]
 
     public init(defaults: UserDefaults) {
         self.defaults = defaults
@@ -57,6 +60,7 @@ public final class Preferences: @unchecked Sendable {
         } else {
             defaultFeedIntervalMinutes = ReminderLogic.defaultIntervalMinutes(.FEED)
         }
+        dismissedPhotoPrompts = defaults.dictionary(forKey: Key.photoPromptDismissed) as? [String: String] ?? [:]
     }
 
     /// Re-reads values another process (widget / intent) may have written.
@@ -114,6 +118,12 @@ public final class Preferences: @unchecked Sendable {
         let value = max(minutes, 1)
         defaultFeedIntervalMinutes = value
         defaults.set(value, forKey: Key.defaultFeedIntervalMinutes)
+    }
+
+    /// Hides this age's photo prompt on this device until the next age.
+    public func dismissPhotoPrompt(profileId: String, milestoneId: String) {
+        dismissedPhotoPrompts[profileId] = milestoneId
+        defaults.set(dismissedPhotoPrompts, forKey: Key.photoPromptDismissed)
     }
 
     /// Caregiver name typed at sign-up when email confirmation delayed the session.

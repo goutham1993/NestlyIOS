@@ -105,7 +105,7 @@ public struct FamilyRepository: Sendable {
         }
         let id = newUUID()
         let storedPhoto = try await storedProfilePhoto(photoPath, familyId: familyId, profileId: id)
-        let profile = ProfileEntity(id: id, familyId: familyId, name: name.trimmed, birthDate: birthDate, sex: sex, profileType: .CHILD, photoPath: storedPhoto, createdAt: now, updatedAt: now)
+        let profile = ProfileEntity(id: id, familyId: familyId, name: name.trimmed, birthDate: birthDate, sex: sex, profileType: .CHILD, photoPath: storedPhoto, photoUpdatedAt: storedPhoto == nil ? nil : now, createdAt: now, updatedAt: now)
         do {
             try await backend.insert("profile", profile.toDto())
         } catch {
@@ -143,15 +143,23 @@ public struct FamilyRepository: Sendable {
 
     @discardableResult
     public func updateChild(_ profile: ProfileEntity) async throws -> ProfileEntity {
-        let previous = try await get(profileId: profile.id)?.photoPath
+        let previous = try await get(profileId: profile.id)
+        let previousPath = previous?.photoPath
         var row = profile
         let incoming = row.photoPath
         row.photoPath = try await storedProfilePhoto(incoming, familyId: row.familyId, profileId: row.id)
+        if row.photoPath == nil {
+            row.photoUpdatedAt = nil
+        } else if row.photoPath != previousPath {
+            row.photoUpdatedAt = nowMs()
+        } else {
+            row.photoUpdatedAt = previous?.photoUpdatedAt
+        }
         let uploaded = (incoming.map(PhotoStore.isLocal) ?? false) ? row.photoPath : nil
         do {
             let fresh = try await backend.versionedUpdate("profile", row.toDto()).toEntity()
-            if let previous, previous != fresh.photoPath {
-                try? await photos.deleteProfile(path: previous)
+            if let previousPath, previousPath != fresh.photoPath {
+                try? await photos.deleteProfile(path: previousPath)
             }
             prefs.setSelectedProfile(profile.id)
             backend.bus.bump(.profile)

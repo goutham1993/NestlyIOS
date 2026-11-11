@@ -138,6 +138,7 @@ public struct ProfileDto: Codable, Equatable, Sendable {
     public var sex: Sex?
     public var profileType: ProfileType
     public var photoPath: String?
+    public var photoUpdatedAt: String?
     public var createdAt: String
     public var updatedAt: String
     public var deletedAt: String?
@@ -146,11 +147,11 @@ public struct ProfileDto: Codable, Equatable, Sendable {
     enum CodingKeys: String, CodingKey {
         case id, name, sex, version
         case familyId = "family_id", birthDate = "birth_date", adjustedBirthDate = "adjusted_birth_date", profileType = "profile_type"
-        case photoPath = "photo_path"
+        case photoPath = "photo_path", photoUpdatedAt = "photo_updated_at"
         case createdAt = "created_at", updatedAt = "updated_at", deletedAt = "deleted_at"
     }
 
-    public init(id: String, familyId: String, name: String, birthDate: String?, adjustedBirthDate: String?, sex: Sex?, profileType: ProfileType, photoPath: String?, createdAt: String, updatedAt: String, deletedAt: String?, version: Int) {
+    public init(id: String, familyId: String, name: String, birthDate: String?, adjustedBirthDate: String?, sex: Sex?, profileType: ProfileType, photoPath: String?, photoUpdatedAt: String?, createdAt: String, updatedAt: String, deletedAt: String?, version: Int) {
         self.id = id
         self.familyId = familyId
         self.name = name
@@ -159,6 +160,7 @@ public struct ProfileDto: Codable, Equatable, Sendable {
         self.sex = sex
         self.profileType = profileType
         self.photoPath = photoPath
+        self.photoUpdatedAt = photoUpdatedAt
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.deletedAt = deletedAt
@@ -175,6 +177,7 @@ public struct ProfileDto: Codable, Equatable, Sendable {
         sex = try c.decodeIfPresent(Sex.self, forKey: .sex)
         profileType = try c.decodeIfPresent(ProfileType.self, forKey: .profileType) ?? .CHILD
         photoPath = try c.decodeIfPresent(String.self, forKey: .photoPath)
+        photoUpdatedAt = try c.decodeIfPresent(String.self, forKey: .photoUpdatedAt)
         createdAt = try c.decode(String.self, forKey: .createdAt)
         updatedAt = try c.decode(String.self, forKey: .updatedAt)
         deletedAt = try c.decodeIfPresent(String.self, forKey: .deletedAt)
@@ -191,6 +194,7 @@ public struct ProfileDto: Codable, Equatable, Sendable {
         try c.put(sex, .sex)
         try c.encode(profileType, forKey: .profileType)
         try c.put(photoPath, .photoPath)
+        try c.put(photoUpdatedAt, .photoUpdatedAt)
         try c.encode(createdAt, forKey: .createdAt)
         try c.encode(updatedAt, forKey: .updatedAt)
         try c.put(deletedAt, .deletedAt)
@@ -203,6 +207,7 @@ public struct ProfileDto: Codable, Equatable, Sendable {
             birthDate: birthDate.flatMap(LocalDate.parse),
             adjustedBirthDate: adjustedBirthDate.flatMap(LocalDate.parse),
             sex: sex, profileType: profileType, photoPath: photoPath,
+            photoUpdatedAt: try photoUpdatedAt?.isoToMillis(),
             createdAt: try createdAt.isoToMillis(), updatedAt: try updatedAt.isoToMillis(), deletedAt: try deletedAt?.isoToMillis(), version: version
         )
     }
@@ -210,7 +215,7 @@ public struct ProfileDto: Codable, Equatable, Sendable {
 
 public extension ProfileEntity {
     func toDto() -> ProfileDto {
-        ProfileDto(id: id, familyId: familyId, name: name, birthDate: birthDate?.description, adjustedBirthDate: adjustedBirthDate?.description, sex: sex, profileType: profileType, photoPath: photoPath, createdAt: createdAt.toIso(), updatedAt: updatedAt.toIso(), deletedAt: deletedAt?.toIso(), version: version)
+        ProfileDto(id: id, familyId: familyId, name: name, birthDate: birthDate?.description, adjustedBirthDate: adjustedBirthDate?.description, sex: sex, profileType: profileType, photoPath: photoPath, photoUpdatedAt: photoUpdatedAt?.toIso(), createdAt: createdAt.toIso(), updatedAt: updatedAt.toIso(), deletedAt: deletedAt?.toIso(), version: version)
     }
 }
 

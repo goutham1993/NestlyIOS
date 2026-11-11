@@ -58,9 +58,29 @@ struct RootView: View {
 
 struct MainTabs: View {
     @Environment(AppModel.self) private var app
+    @Environment(FamilyStore.self) private var family
+    @Environment(Preferences.self) private var prefs
+    /// Add Photo hides the prompt for this launch without counting as Not Now.
+    @State private var suppressPhotoPrompt = false
+
+    private var photoPrompt: PhotoPrompt.Due? {
+        guard !suppressPhotoPrompt, !app.showNightstand, app.entryRequest == nil else { return nil }
+        let children = (family.profiles ?? []).map { profile in
+            PhotoPrompt.Child(
+                id: profile.id,
+                name: profile.name,
+                birthDate: profile.birthDate,
+                photoPath: profile.photoPath,
+                photoUpdatedOn: profile.photoUpdatedAt.map { LocalDate.of(ms: $0) },
+                dismissedMilestoneId: prefs.dismissedPhotoPrompts[profile.id]
+            )
+        }
+        return PhotoPrompt.choose(children, selectedId: family.selectedProfile?.id, today: .today())
+    }
 
     var body: some View {
         @Bindable var app = app
+        let prompt = photoPrompt
         TabView(selection: $app.tab) {
             tabStack(.activity) { ActivityTab() }
                 .tabItem { Label("Activity", systemImage: "square.grid.2x2") }
@@ -76,6 +96,21 @@ struct MainTabs: View {
                 .tag(AppTab.account)
         }
         .safeAreaInset(edge: .top, spacing: 0) { ErrorBanner() }
+        .sheet(item: Binding(get: { prompt }, set: { _ in })) { due in
+            PhotoPromptSheet(due: due, notNow: {
+                prefs.dismissPhotoPrompt(profileId: due.profileId, milestoneId: due.milestone.id)
+            }, addPhoto: {
+                let profileId = due.profileId
+                suppressPhotoPrompt = true
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 350_000_000)
+                    app.openChildPhoto(profileId)
+                }
+            })
+            .interactiveDismissDisabled()
+            .presentationDetents([.medium])
+            .presentationDragIndicator(.hidden)
+        }
     }
 
     private func tabStack<Content: View>(_ tab: AppTab, @ViewBuilder _ content: () -> Content) -> some View {
@@ -110,6 +145,31 @@ struct RouteView: View {
         case .help: HelpView()
         case .importExport: ImportExportView()
         }
+    }
+}
+
+/// Asks for a new shared photo at a child's age milestone.
+private struct PhotoPromptSheet: View {
+    let due: PhotoPrompt.Due
+    let notNow: () -> Void
+    let addPhoto: () -> Void
+
+    var body: some View {
+        VStack(spacing: Space.l) {
+            ChildAvatar(name: due.name, photoPath: due.photoPath, size: 72)
+            Text(due.title)
+                .font(.rounded(.title2, weight: .bold))
+                .multilineTextAlignment(.center)
+            Text(due.message)
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+            Button("Add Photo", action: addPhoto).buttonStyle(.primary)
+            Button("Not Now", action: notNow).buttonStyle(.secondary)
+        }
+        .padding(Space.xl)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(Color(.systemGroupedBackground))
     }
 }
 

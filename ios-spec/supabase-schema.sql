@@ -815,3 +815,15 @@ create policy profile_photos_delete on storage.objects for delete to authenticat
     using (bucket_id = 'profile-photos'
            and (storage.foldername(name))[1] in (select id::text from private.my_family_ids() as id));
 
+-- ===== 20261110010000_profile_photo_updated_at.sql =====
+-- When the shared child photo last changed. Apply this in the Supabase SQL editor
+-- before the age reminder can tell a new photo from an older one. Name and birth-date
+-- edits do not set this column. Existing photos keep updated_at so a picture saved
+-- before this column does not immediately ask for a new one.
+
+alter table public.profile add column photo_updated_at timestamptz;
+
+update public.profile
+set photo_updated_at = updated_at
+where photo_path is not null and photo_updated_at is null;
+

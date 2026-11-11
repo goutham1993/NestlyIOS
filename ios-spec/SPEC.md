@@ -89,7 +89,7 @@ Full DDL is in `supabase-schema.sql`. Summary of what the client relies on:
 **caregiver** — `id, family_id, user_id (nullable), name (non-blank), role ('OWNER'|'MEMBER'), created_at, updated_at, deleted_at, version`.
 Unique: `(family_id, name)`, `(family_id, user_id)`.
 
-**profile** — `id, family_id, name, birth_date date?, adjusted_birth_date date?, sex ('MALE'|'FEMALE'|'OTHER')?, profile_type ('CHILD'|'PREGNANCY'), photo_path?, timestamps, version`. `photo_path` is `{family_id}/{profile_id}/{filename}` in the `profile-photos` bucket, or null when the child has no photo. One shared photo per child: any family member can set, replace, or remove it, and everyone sees the same picture.
+**profile** — `id, family_id, name, birth_date date?, adjusted_birth_date date?, sex ('MALE'|'FEMALE'|'OTHER')?, profile_type ('CHILD'|'PREGNANCY'), photo_path?, photo_updated_at timestamptz?, timestamps, version`. `photo_path` is `{family_id}/{profile_id}/{filename}` in the `profile-photos` bucket, or null when the child has no photo. One shared photo per child: any family member can set, replace, or remove it, and everyone sees the same picture. `photo_updated_at` is set only when that file changes and cleared when the photo is removed. Apply `20261110010000_profile_photo_updated_at` in the Supabase SQL editor before the app can record it.
 
 **activity**
 
@@ -288,13 +288,13 @@ Rules:
   - Target family = `currentFamilyId()` (first profile's family, else first non-deleted family I can see).
   - If there is **no family at all**: create one (`family.name = null`) and insert an `OWNER` caregiver `{user_id: me, name: caregiverName.trimmed or "Caregiver"}`, store it as current caregiver.
   - Else if `caregiverName` non-blank and no caregiver with that name exists in the family: insert name-only `MEMBER`.
-  - If `photoPath` is a staged local file, upload it to `profile-photos` at `{family_id}/{profile_id}/{uuid}.jpg` before insert and store that path. A missing photo is fine.
+  - If `photoPath` is a staged local file, upload it to `profile-photos` at `{family_id}/{profile_id}/{uuid}.jpg` before insert and store that path, with `photo_updated_at` set to now. A missing photo is fine.
   - Insert profile (`profile_type = CHILD`), select it. Bump profile, caregiver, family ticks.
   - **Intentional fix vs Android:** Android creates a new family whenever there are *no profiles*, even if the user already created/joined a family during onboarding (sign-up auto-creates one), which leaves an empty orphan family — or, for someone who joined an empty family by invite, puts the child in a family nobody else can see. iOS must reuse the existing family.
 - `createFamily(caregiverName)` — insert family (`name = null`) + OWNER caregiver (as above), no profile.
 - `joinWithInvite(code, name)` — call RPC with `code.trimmed` and `name.trimmed`; empty result → "Invite is invalid or expired". Store returned caregiver id as current caregiver.
 - `createInvite(familyId)` — insert `{id, family_id}` then read back `code`.
-- `updateChild(profile)` — version-checked. A staged local `photo_path` is uploaded first and replaces the stored path; nil clears it. The previous storage object is deleted best-effort after the row update succeeds.
+- `updateChild(profile)` — version-checked. A staged local `photo_path` is uploaded first and replaces the stored path; nil clears it. A new file sets `photo_updated_at` to now; clearing the photo clears that timestamp; leaving the file unchanged keeps the old timestamp. The previous storage object is deleted best-effort after the row update succeeds.
 - `addCaregiver(name)` — name-only `MEMBER`; if the name already exists return the existing one.
 - `removeCaregiver(caregiver)` — version-checked soft delete. Refuses the signed-in user's own row, the last remaining caregiver, and (unless the caller is `OWNER`) another signed-in member. If that id was the stored current caregiver, clear it. Bump the caregiver tick. Already-deleted rows are a no-op.
 - `currentFamilyId` — selected profile's family, else first family.
@@ -364,6 +364,7 @@ Modes: **Sign in** / **Create account** (toggle).
 
 ### 11.1 Header & empty state
 - Child photo (or a letter monogram when there is none), name, age (`Format.age`, e.g. "2 weeks, 3 days old" / "Born today"), today's date (`headerDate` "EEE, MMM d").
+- **Photo reminder** — every month of the first year (1 through 12 months), then each later birthday, when the shared photo is older than that day (or missing). One prompt. The selected child wins when they are due. **Not Now** hides that age on this device until the next age. **Add Photo** opens Account → Family with that child's editor and does not count as a dismiss. A child with no birth date is skipped. Twelve months is the first birthday and is not asked twice.
 - **Summary** button → Summary sheet (§11.4).
 - **More** menu: Set Reminders, Doctor Appointments, Notes, Edit Activities.
 - If no profiles: Welcome with **Add Child** (dialog: optional photo, Name, Boy/Girl, Birthdate, Your name) and **Import from Nara**.

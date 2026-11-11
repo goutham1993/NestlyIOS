@@ -155,6 +155,8 @@ struct FamilyView: View {
             }
         }
         .navigationTitle("Family")
+        .onAppear { openPendingChild() }
+        .onChange(of: app.pendingChildEdit) { _, _ in openPendingChild() }
         .sheet(item: $editingChild) { child in
             ChildForm(title: "Edit child", initial: child, askCaregiverName: false) { name, sex, birth, _, photo in
                 var row = child
@@ -196,6 +198,13 @@ struct FamilyView: View {
             return "They'll lose access to this family. Entries they already logged stay."
         }
         return "They'll no longer show up in your family. Entries they already logged stay."
+    }
+
+    private func openPendingChild() {
+        guard let id = app.pendingChildEdit else { return }
+        guard let child = (family.profiles ?? []).first(where: { $0.id == id }) else { return }
+        editingChild = child
+        app.pendingChildEdit = nil
     }
 
     private func caregiverRow(_ caregiver: CaregiverEntity) -> some View {

@@ -39,6 +39,8 @@ final class AppModel {
     var tab: AppTab = .activity
     var paths: [AppTab: [Route]] = [:]
     var entryRequest: EntryRequest?
+    /// Child whose edit sheet Family should open, usually from the photo reminder.
+    var pendingChildEdit: String?
     var showNightstand = false
     var toast: String?
 
@@ -107,6 +109,13 @@ final class AppModel {
         default:
             tab = .activity
         }
+    }
+
+    /// Account → Family, with that child's editor ready to change the photo.
+    func openChildPhoto(_ profileId: String) {
+        tab = .account
+        paths[.account] = [.family]
+        pendingChildEdit = profileId
     }
 
     func openAppointment(_ id: String) {

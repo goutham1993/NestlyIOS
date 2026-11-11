@@ -55,14 +55,15 @@ public struct DataTransfer: Sendable {
         try await repos.family.upsertCaregivers(caregivers)
         // The Nestly CSV has no child-photo column, so a re-import must not clear one.
         if profiles.contains(where: { $0.photoPath == nil }) {
-            let kept = Dictionary(uniqueKeysWithValues: (try await repos.family.fetchProfiles()).compactMap { profile -> (String, String)? in
+            let kept = Dictionary(uniqueKeysWithValues: (try await repos.family.fetchProfiles()).compactMap { profile -> (String, (String, EpochMs?))? in
                 guard let path = profile.photoPath else { return nil }
-                return (profile.id, path)
+                return (profile.id, (path, profile.photoUpdatedAt))
             })
             profiles = profiles.map { profile in
-                guard profile.photoPath == nil, let path = kept[profile.id] else { return profile }
+                guard profile.photoPath == nil, let (path, updatedAt) = kept[profile.id] else { return profile }
                 var copy = profile
                 copy.photoPath = path
+                copy.photoUpdatedAt = updatedAt
                 return copy
             }
         }
