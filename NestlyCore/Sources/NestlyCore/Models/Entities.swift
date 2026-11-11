@@ -275,12 +275,14 @@ public struct ProfileEntity: Equatable, Hashable, Identifiable, Sendable, Copyab
     public var adjustedBirthDate: LocalDate?
     public var sex: Sex?
     public var profileType: ProfileType
+    /// Storage path in `profile-photos`, or a staged local file until save. Nil keeps the letter monogram.
+    public var photoPath: String?
     public var createdAt: EpochMs
     public var updatedAt: EpochMs
     public var deletedAt: EpochMs?
     public var version: Int
 
-    public init(id: String, familyId: String, name: String, birthDate: LocalDate? = nil, adjustedBirthDate: LocalDate? = nil, sex: Sex? = nil, profileType: ProfileType = .CHILD, createdAt: EpochMs, updatedAt: EpochMs, deletedAt: EpochMs? = nil, version: Int = 1) {
+    public init(id: String, familyId: String, name: String, birthDate: LocalDate? = nil, adjustedBirthDate: LocalDate? = nil, sex: Sex? = nil, profileType: ProfileType = .CHILD, photoPath: String? = nil, createdAt: EpochMs, updatedAt: EpochMs, deletedAt: EpochMs? = nil, version: Int = 1) {
         self.id = id
         self.familyId = familyId
         self.name = name
@@ -288,6 +290,7 @@ public struct ProfileEntity: Equatable, Hashable, Identifiable, Sendable, Copyab
         self.adjustedBirthDate = adjustedBirthDate
         self.sex = sex
         self.profileType = profileType
+        self.photoPath = photoPath
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.deletedAt = deletedAt

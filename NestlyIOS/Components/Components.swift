@@ -329,7 +329,7 @@ struct ChildForm: View {
     let title: String
     var initial: ProfileEntity?
     var askCaregiverName: Bool
-    let onSave: (_ name: String, _ sex: Sex?, _ birthDate: LocalDate?, _ caregiverName: String) async throws -> Void
+    let onSave: (_ name: String, _ sex: Sex?, _ birthDate: LocalDate?, _ caregiverName: String, _ photoPath: String?) async throws -> Void
     @Environment(\.dismiss) private var dismiss
 
     @State private var name = ""
@@ -337,6 +337,9 @@ struct ChildForm: View {
     @State private var hasBirthDate = true
     @State private var birthDate = Date()
     @State private var caregiverName = ""
+    @State private var photoPath: String?
+    @State private var photoItem: PhotosPickerItem?
+    @State private var didLoad = false
     @State private var saving = false
     @State private var error: String?
 
@@ -345,11 +348,16 @@ struct ChildForm: View {
             Form {
                 Section {
                     VStack(spacing: Space.m) {
-                        ChildAvatar(name: name, size: 72)
+                        ChildAvatar(name: name, photoPath: photoPath, size: 72)
                         Text(name.isBlank ? "Your little one" : name)
                             .font(.rounded(.title3, weight: .bold))
                             .foregroundStyle(name.isBlank ? .secondary : .primary)
                             .contentTransition(.opacity)
+                        photoActions
+                        Text("Optional. Anyone in the family can change this later.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, Space.s)
@@ -391,12 +399,55 @@ struct ChildForm: View {
                 }
             }
             .onAppear {
+                guard !didLoad else { return }
+                didLoad = true
                 guard let initial else { return }
                 name = initial.name
                 sex = initial.sex
                 hasBirthDate = initial.birthDate != nil
                 if let b = initial.birthDate { birthDate = b.date() }
+                photoPath = initial.photoPath
             }
+            .onChange(of: photoItem) { _, picked in
+                guard let picked else { return }
+                Task {
+                    defer { photoItem = nil }
+                    guard let data = try? await picked.loadTransferable(type: Data.self), let jpeg = PhotoEncoding.jpeg(from: data) else {
+                        error = "Couldn't read that photo."
+                        return
+                    }
+                    do {
+                        photoPath = try PhotoStore.stageLocal(jpeg)
+                        error = nil
+                    } catch {
+                        self.error = "Couldn't read that photo."
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder private var photoActions: some View {
+        if photoPath == nil {
+            PhotosPicker(selection: $photoItem, matching: .images) {
+                Label("Add Photo", systemImage: "camera")
+            }
+            .buttonStyle(.borderless)
+            .disabled(saving)
+        } else {
+            HStack(spacing: Space.l) {
+                PhotosPicker(selection: $photoItem, matching: .images) {
+                    Label("Change Photo", systemImage: "camera")
+                }
+                .buttonStyle(.borderless)
+                Button(role: .destructive) {
+                    withAnimation(.snappy) { photoPath = nil }
+                } label: {
+                    Label("Remove Photo", systemImage: "trash")
+                }
+                .buttonStyle(.borderless)
+            }
+            .disabled(saving)
         }
     }
 
@@ -406,7 +457,7 @@ struct ChildForm: View {
         let birth = hasBirthDate ? LocalDate.of(ms: birthDate.epochMs) : nil
         Task {
             do {
-                try await onSave(name, sex, birth, caregiverName)
+                try await onSave(name, sex, birth, caregiverName, photoPath)
                 Haptics.success()
                 dismiss()
             } catch {

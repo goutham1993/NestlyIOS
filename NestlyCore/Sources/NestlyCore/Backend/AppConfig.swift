@@ -5,6 +5,7 @@ public enum AppConfig {
     /// Publishable (anon) key. RLS is the security boundary; never ship a service-role key.
     public static let supabaseKey = "sb_publishable_zZmg34taTJm9k57PdYBEug_JGcRZ21_"
     public static let photoBucket = "activity-photos"
+    public static let profilePhotoBucket = "profile-photos"
 
     public static let bundleId = "Baby.NestlyIOS"
     public static let appGroup = "group.Baby.NestlyIOS"

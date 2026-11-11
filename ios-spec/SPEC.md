@@ -59,7 +59,7 @@ Every caregiver in a family sees the same data in real time.
 ```
 URL:              https://kuyskumyayiwpyiwhkup.supabase.co
 Publishable key:  sb_publishable_zZmg34taTJm9k57PdYBEug_JGcRZ21_
-Storage bucket:   activity-photos
+Storage buckets:  activity-photos, profile-photos
 ```
 Only the publishable (anon) key ships in the client. RLS is the security boundary. **Never** embed a service-role key.
 
@@ -89,7 +89,7 @@ Full DDL is in `supabase-schema.sql`. Summary of what the client relies on:
 **caregiver** — `id, family_id, user_id (nullable), name (non-blank), role ('OWNER'|'MEMBER'), created_at, updated_at, deleted_at, version`.
 Unique: `(family_id, name)`, `(family_id, user_id)`.
 
-**profile** — `id, family_id, name, birth_date date?, adjusted_birth_date date?, sex ('MALE'|'FEMALE'|'OTHER')?, profile_type ('CHILD'|'PREGNANCY'), timestamps, version`.
+**profile** — `id, family_id, name, birth_date date?, adjusted_birth_date date?, sex ('MALE'|'FEMALE'|'OTHER')?, profile_type ('CHILD'|'PREGNANCY'), photo_path?, timestamps, version`. `photo_path` is `{family_id}/{profile_id}/{filename}` in the `profile-photos` bucket, or null when the child has no photo. One shared photo per child: any family member can set, replace, or remove it, and everyone sees the same picture.
 
 **activity**
 
@@ -172,6 +172,8 @@ The editor then reloads the latest row and shows that message. Inserts send `ver
 
 ### 3.6 Storage
 Bucket `activity-photos`: private, 10 MB max, `image/jpeg|png|webp|heic`. Path `{family_id}/{activity_id}/{filename}`; access limited to members of the family in the first path segment. Upload with `upsert: true`. Download with authenticated download (not public URL). On iOS, re-encode picked photos as JPEG (quality ~0.85, max ~2048px long edge) named `{uuid}.jpg`, `contentType: image/jpeg`.
+
+Bucket `profile-photos`: same limits, privacy, and family-member access. Path `{family_id}/{profile_id}/{filename}`, stored on `profile.photo_path`. Apply the `20261110000000_profile_photos` section of `supabase-schema.sql` in the Supabase project before the app can save a child photo. Do not put child photos in `activity-photos`.
 
 ### 3.7 Realtime
 - Tables are in the `supabase_realtime` publication: activity, profile, caregiver, family, reminder, appointment, appointment_question, note.
@@ -282,20 +284,21 @@ Rules:
 - `caregivers`: caregivers of the selected profile's family, ordered by `name`.
 - `currentCaregiver`: caregiver whose `user_id == auth.uid`, else stored `current_caregiver` if in list, else first.
 - `hasFamily`: any non-deleted family visible to me.
-- `addChild(name, sex, birthDate, caregiverName)`:
+- `addChild(name, sex, birthDate, caregiverName, photoPath?)`:
   - Target family = `currentFamilyId()` (first profile's family, else first non-deleted family I can see).
   - If there is **no family at all**: create one (`family.name = null`) and insert an `OWNER` caregiver `{user_id: me, name: caregiverName.trimmed or "Caregiver"}`, store it as current caregiver.
   - Else if `caregiverName` non-blank and no caregiver with that name exists in the family: insert name-only `MEMBER`.
+  - If `photoPath` is a staged local file, upload it to `profile-photos` at `{family_id}/{profile_id}/{uuid}.jpg` before insert and store that path. A missing photo is fine.
   - Insert profile (`profile_type = CHILD`), select it. Bump profile, caregiver, family ticks.
   - **Intentional fix vs Android:** Android creates a new family whenever there are *no profiles*, even if the user already created/joined a family during onboarding (sign-up auto-creates one), which leaves an empty orphan family — or, for someone who joined an empty family by invite, puts the child in a family nobody else can see. iOS must reuse the existing family.
 - `createFamily(caregiverName)` — insert family (`name = null`) + OWNER caregiver (as above), no profile.
 - `joinWithInvite(code, name)` — call RPC with `code.trimmed` and `name.trimmed`; empty result → "Invite is invalid or expired". Store returned caregiver id as current caregiver.
 - `createInvite(familyId)` — insert `{id, family_id}` then read back `code`.
-- `updateChild(profile)` — version-checked.
+- `updateChild(profile)` — version-checked. A staged local `photo_path` is uploaded first and replaces the stored path; nil clears it. The previous storage object is deleted best-effort after the row update succeeds.
 - `addCaregiver(name)` — name-only `MEMBER`; if the name already exists return the existing one.
 - `removeCaregiver(caregiver)` — version-checked soft delete. Refuses the signed-in user's own row, the last remaining caregiver, and (unless the caller is `OWNER`) another signed-in member. If that id was the stored current caregiver, clear it. Bump the caregiver tick. Already-deleted rows are a no-op.
 - `currentFamilyId` — selected profile's family, else first family.
-- `clearCurrentFamilyData` (DEBUG builds only) — hard-delete in order: activity, reminder, appointment_question, appointment, note, family_invite, profile, family, then caregivers; also delete all storage objects under `{familyId}/`.
+- `clearCurrentFamilyData` (DEBUG builds only) — hard-delete in order: activity, reminder, appointment_question, appointment, note, family_invite, profile, family, then caregivers; also delete all storage objects under `{familyId}/` in both `activity-photos` and `profile-photos`.
 
 ### 8.3 Selecting a child
 Parity with Android: the selected child changes only via the Family screen (editing/saving a child selects it). Adding a child selects it.
@@ -360,10 +363,10 @@ Modes: **Sign in** / **Create account** (toggle).
 ## 11. Activity tab (dashboard)
 
 ### 11.1 Header & empty state
-- Child name, age (`Format.age`, e.g. "2 weeks, 3 days old" / "Born today"), today's date (`headerDate` "EEE, MMM d").
+- Child photo (or a letter monogram when there is none), name, age (`Format.age`, e.g. "2 weeks, 3 days old" / "Born today"), today's date (`headerDate` "EEE, MMM d").
 - **Summary** button → Summary sheet (§11.4).
 - **More** menu: Set Reminders, Doctor Appointments, Notes, Edit Activities.
-- If no profiles: Welcome with **Add Child** (dialog: Name, Boy/Girl, Birthdate, Your name) and **Import from Nara**.
+- If no profiles: Welcome with **Add Child** (dialog: optional photo, Name, Boy/Girl, Birthdate, Your name) and **Import from Nara**.
 
 ### 11.2 Dashboard data
 - Activities for the selected profile (plus `profile_id IS NULL` PUMP rows) since **start of yesterday**.
@@ -660,7 +663,7 @@ Plain-text with line prefixes: "• " bullet, "☐ " unchecked, "☑ " checked, 
 Rows: **Family**, **Settings**, **Subscription**, **Help**. Section "Data": **Import / Export CSV**. Section "Share & Social": "Share Nestly With Friends", "Rate Nestly" — **stubs (no-op)** for parity.
 
 ### 18.1 Family
-- **Children**: each row name + age + "Tap to edit" → Edit Child dialog (Name, Boy/Girl, Birthdate). Save → version-checked update **and selects that child**. **Add child** (asks "Your name" only if the family has no caregivers).
+- **Children**: each row photo (or letter monogram) + name + age + "Tap to edit" → Edit Child dialog (optional photo, Name, Boy/Girl, Birthdate). Save → version-checked update **and selects that child**. **Add child** (asks "Your name" only if the family has no caregivers). Skipping the photo leaves the monogram. Any caregiver can add, change, or remove the shared photo later.
 - **Caregivers**: each row name + "Your Profile" (if current) or "Tap if this is you" (tap → set current caregiver). **Add caregiver** → name-only. **Remove** (swipe or long-press, confirm): version-checked soft delete. Hidden for yourself and for the last caregiver. Any member can remove a name-only caregiver; only an `OWNER` can remove another signed-in member. Past entries stay.
 - **Invite**: **Create invite code** → "Code: {CODE} — share it with another caregiver" (add a Copy/Share action).
 
@@ -671,11 +674,11 @@ Rows: **Family**, **Settings**, **Subscription**, **Help**. Section "Data": **Im
 - **Communication preferences** → toggles Reminders, Product updates (local, **not persisted** — parity stub).
 - **Nightstand Mode** → opens the in-app nightstand (§21.6). (Android deep-linked to system screensaver settings.)
 - **Default bottle amount** — numeric field in display volume units; empty = off. Helper: "Tap to change it. Leave the amount empty and tap OK to turn the default off."
-- **Clear all data** — `#if DEBUG` only; confirm, then clear family photos + `clearCurrentFamilyData`.
+- **Clear all data** — `#if DEBUG` only; confirm, then clear family activity photos and child photos + `clearCurrentFamilyData`.
 
 ### 18.3 Subscription / Help
 - Subscription: "Free" plan label + stub.
-- Help: Contact `help@nestly.app` (mailto), FAQs (stub), Version (`CFBundleShortVersionString (CFBundleVersion)`), Legal (stub), Advanced Settings (stub).
+- Help: Contact `help@nestly.app` (mailto), Version (`CFBundleShortVersionString (CFBundleVersion)`), icon acknowledgements.
 
 ---
 
@@ -841,6 +844,6 @@ Plus iOS-specific:
 ## 25. Out of scope / known parity notes
 - Visual design.
 - `appointment_question` and `user_settings` tables (unused).
-- Communication preferences don't persist; Share/Rate/FAQs/Legal/Advanced/Subscription are stubs (parity).
+- Communication preferences don't persist; Share/Rate/Subscription are stubs (parity).
 - Legacy binary `.xls` (OLE) import unsupported — show the re-export message.
 - No dedicated child switcher (parity: switch by editing/saving a child in Family).

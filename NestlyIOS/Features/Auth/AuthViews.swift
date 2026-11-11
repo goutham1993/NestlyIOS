@@ -98,8 +98,8 @@ struct OnboardingView: View {
         }
         .onAppear { name = app.prefs.pendingCaregiverName ?? app.family.currentCaregiver?.name ?? "" }
         .sheet(isPresented: $addingChild) {
-            ChildForm(title: "Add child", askCaregiverName: false) { childName, sex, birth, _ in
-                try await app.repos.family.addChild(name: childName, sex: sex, birthDate: birth, caregiverName: app.prefs.pendingCaregiverName ?? "")
+            ChildForm(title: "Add child", askCaregiverName: false) { childName, sex, birth, _, photo in
+                try await app.repos.family.addChild(name: childName, sex: sex, birthDate: birth, caregiverName: app.prefs.pendingCaregiverName ?? "", photoPath: photo)
                 app.prefs.pendingCaregiverName = nil
             }
         }

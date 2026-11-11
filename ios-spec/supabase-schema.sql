@@ -787,3 +787,31 @@ alter publication supabase_realtime add table public.note;
 -- alter table public.activity
 --     add column if not exists solids_resets_feed_schedule boolean not null default true;
 
+-- ===== 20261110000000_profile_photos.sql =====
+-- Shared child photos. Apply this section in the Supabase SQL editor before the
+-- app can save a photo. One object per upload at {family_id}/{profile_id}/{file}
+-- in the private profile-photos bucket. Any signed-in member of that family can
+-- read, add, replace, or remove it. Activity photos stay in activity-photos.
+
+alter table public.profile add column photo_path text;
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('profile-photos', 'profile-photos', false, 10485760,
+        array['image/jpeg', 'image/png', 'image/webp', 'image/heic']);
+
+-- Objects live at {family_id}/{profile_id}/{file}; members of that family get full access.
+create policy profile_photos_select on storage.objects for select to authenticated
+    using (bucket_id = 'profile-photos'
+           and (storage.foldername(name))[1] in (select id::text from private.my_family_ids() as id));
+create policy profile_photos_insert on storage.objects for insert to authenticated
+    with check (bucket_id = 'profile-photos'
+                and (storage.foldername(name))[1] in (select id::text from private.my_family_ids() as id));
+create policy profile_photos_update on storage.objects for update to authenticated
+    using (bucket_id = 'profile-photos'
+           and (storage.foldername(name))[1] in (select id::text from private.my_family_ids() as id))
+    with check (bucket_id = 'profile-photos'
+                and (storage.foldername(name))[1] in (select id::text from private.my_family_ids() as id));
+create policy profile_photos_delete on storage.objects for delete to authenticated
+    using (bucket_id = 'profile-photos'
+           and (storage.foldername(name))[1] in (select id::text from private.my_family_ids() as id));
+

@@ -83,6 +83,7 @@ public struct NaraCsvImporter: Sendable {
                 adjustedBirthDate: p.adjustedBirthDate ?? matched?.adjustedBirthDate,
                 sex: p.sex ?? matched?.sex,
                 profileType: p.profileType,
+                photoPath: matched?.photoPath,
                 createdAt: matched?.createdAt ?? now,
                 updatedAt: now,
                 version: matched?.version ?? 1

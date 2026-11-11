@@ -173,7 +173,7 @@ private struct ChildHeader: View {
 
     var body: some View {
         HStack(spacing: Space.m) {
-            ChildAvatar(name: profile.name, size: 56)
+            ChildAvatar(name: profile.name, photoPath: profile.photoPath, size: 56)
             VStack(alignment: .leading, spacing: 2) {
                 let profiles = family.profiles ?? []
                 if profiles.count > 1 {
@@ -742,8 +742,8 @@ struct WelcomeView: View {
         }
         .background(Color(.systemGroupedBackground))
         .sheet(isPresented: $adding) {
-            ChildForm(title: "Add child", askCaregiverName: true) { name, sex, birth, caregiver in
-                try await app.repos.family.addChild(name: name, sex: sex, birthDate: birth, caregiverName: caregiver)
+            ChildForm(title: "Add child", askCaregiverName: true) { name, sex, birth, caregiver, photo in
+                try await app.repos.family.addChild(name: name, sex: sex, birthDate: birth, caregiverName: caregiver, photoPath: photo)
             }
         }
     }

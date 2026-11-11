@@ -47,7 +47,7 @@ struct AccountTab: View {
         return HStack(spacing: Space.m) {
             HStack(spacing: -10) {
                 ForEach(profiles.prefix(3)) { child in
-                    ChildAvatar(name: child.name, size: 48)
+                    ChildAvatar(name: child.name, photoPath: child.photoPath, size: 48)
                         .overlay(Circle().stroke(Color(.secondarySystemGroupedBackground), lineWidth: 2))
                 }
             }
@@ -91,7 +91,7 @@ struct FamilyView: View {
                 ForEach(profiles) { child in
                     Button { editingChild = child } label: {
                         HStack(spacing: Space.m) {
-                            ChildAvatar(name: child.name, size: 40)
+                            ChildAvatar(name: child.name, photoPath: child.photoPath, size: 40)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(child.name).foregroundStyle(Color.primary)
                                 if let birth = child.birthDate, let age = Format.age(birth) {
@@ -156,17 +156,18 @@ struct FamilyView: View {
         }
         .navigationTitle("Family")
         .sheet(item: $editingChild) { child in
-            ChildForm(title: "Edit child", initial: child, askCaregiverName: false) { name, sex, birth, _ in
+            ChildForm(title: "Edit child", initial: child, askCaregiverName: false) { name, sex, birth, _, photo in
                 var row = child
                 row.name = name
                 row.sex = sex
                 row.birthDate = birth
+                row.photoPath = photo
                 try await app.repos.family.updateChild(row)
             }
         }
         .sheet(isPresented: $addingChild) {
-            ChildForm(title: "Add child", askCaregiverName: family.caregivers.isEmpty) { name, sex, birth, caregiver in
-                let child = try await app.repos.family.addChild(name: name, sex: sex, birthDate: birth, caregiverName: caregiver)
+            ChildForm(title: "Add child", askCaregiverName: family.caregivers.isEmpty) { name, sex, birth, caregiver, photo in
+                let child = try await app.repos.family.addChild(name: name, sex: sex, birthDate: birth, caregiverName: caregiver, photoPath: photo)
                 app.prefs.setSelectedProfile(child.id)
             }
         }
@@ -405,6 +406,7 @@ struct SettingsView: View {
         guard let familyId = family.currentFamilyId else { return }
         do {
             try? await app.repos.photos.deleteAll(familyId: familyId)
+            try? await app.repos.photos.deleteAllProfiles(familyId: familyId)
             try await app.repos.family.clearFamilyData(familyId: familyId)
             TimerGroup.allCases.forEach(TimerControl.clear)
             clearMessage = "Cleared."
@@ -509,9 +511,6 @@ struct HelpView: View {
                 Link(destination: URL(string: "mailto:help@nestly.app")!) {
                     IconRow(title: "Contact Support", icon: .system("envelope.fill"), subtitle: "help@nestly.app", chevron: false)
                 }
-                Button {} label: { IconRow(title: "FAQs", icon: .system("questionmark.bubble.fill")) }
-                Button {} label: { IconRow(title: "Legal", icon: .system("doc.text.fill")) }
-                Button {} label: { IconRow(title: "Advanced Settings", icon: .system("slider.horizontal.3")) }
             }
             Section {
                 IconRow(title: "Version", icon: .system("info.circle.fill"), tint: .secondary, value: version, chevron: false)

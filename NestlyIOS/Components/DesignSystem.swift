@@ -261,27 +261,56 @@ extension EmptyStateView where Actions == EmptyView {
     }
 }
 
-/// Child monogram on a soft accent circle; falls back to the baby icon before a name exists.
+/// Child photo on a circle, or a letter monogram when there is no photo.
 struct ChildAvatar: View {
     let name: String
+    var photoPath: String? = nil
     var size: CGFloat = 48
+    @State private var image: UIImage?
+    @State private var failed = false
 
     var body: some View {
-        let initial = name.trimmingCharacters(in: .whitespaces).first.map { String($0).uppercased() }
         ZStack {
             Circle().fill(Palette.accent.opacity(0.15))
-            if let initial {
-                Text(initial)
-                    .font(.system(size: size * 0.44, weight: .bold, design: .rounded))
-                    .foregroundStyle(Palette.accent)
+            if let image {
+                Image(uiImage: image).resizable().scaledToFill()
+            } else if photoPath != nil, !failed {
+                ProgressView()
             } else {
-                NestlyIcon.child.image.resizable().scaledToFit()
-                    .frame(width: size * 0.5, height: size * 0.5)
-                    .foregroundStyle(Palette.accent)
+                monogram
             }
         }
         .frame(width: size, height: size)
+        .clipShape(Circle())
         .accessibilityHidden(true)
+        .task(id: photoPath) {
+            image = nil
+            failed = false
+            guard let photoPath else { return }
+            do {
+                let data = try await PhotoStore(backend: .shared).profileData(photoPath)
+                if let loaded = UIImage(data: data) {
+                    image = loaded
+                } else {
+                    failed = true
+                }
+            } catch {
+                failed = true
+            }
+        }
+    }
+
+    @ViewBuilder private var monogram: some View {
+        let initial = name.trimmingCharacters(in: .whitespaces).first.map { String($0).uppercased() }
+        if let initial {
+            Text(initial)
+                .font(.system(size: size * 0.44, weight: .bold, design: .rounded))
+                .foregroundStyle(Palette.accent)
+        } else {
+            NestlyIcon.child.image.resizable().scaledToFit()
+                .frame(width: size * 0.5, height: size * 0.5)
+                .foregroundStyle(Palette.accent)
+        }
     }
 }
 

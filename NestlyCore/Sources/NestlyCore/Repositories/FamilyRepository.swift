@@ -3,9 +3,13 @@ import Supabase
 
 public struct FamilyRepository: Sendable {
     public let backend: Backend
+    public let photos: PhotoStore
     private var prefs: Preferences { backend.prefs }
 
-    public init(backend: Backend = .shared) { self.backend = backend }
+    public init(backend: Backend = .shared) {
+        self.backend = backend
+        photos = PhotoStore(backend: backend)
+    }
 
     // MARK: Reads
 
@@ -83,9 +87,9 @@ public struct FamilyRepository: Sendable {
     }
 
     /// Reuses the family I already have (iOS fix vs Android, which orphaned one); only creates a
-    /// family when there is none at all.
+    /// family when there is none at all. A staged local `photoPath` is uploaded before insert.
     @discardableResult
-    public func addChild(name: String, sex: Sex?, birthDate: LocalDate?, caregiverName: String) async throws -> ProfileEntity {
+    public func addChild(name: String, sex: Sex?, birthDate: LocalDate?, caregiverName: String, photoPath: String? = nil) async throws -> ProfileEntity {
         let now = nowMs()
         let familyId: String
         if let existing = try await currentFamilyId() {
@@ -99,8 +103,17 @@ public struct FamilyRepository: Sendable {
         } else {
             familyId = try await createFamily(caregiverName: caregiverName)
         }
-        let profile = ProfileEntity(id: newUUID(), familyId: familyId, name: name.trimmed, birthDate: birthDate, sex: sex, profileType: .CHILD, createdAt: now, updatedAt: now)
-        try await backend.insert("profile", profile.toDto())
+        let id = newUUID()
+        let storedPhoto = try await storedProfilePhoto(photoPath, familyId: familyId, profileId: id)
+        let profile = ProfileEntity(id: id, familyId: familyId, name: name.trimmed, birthDate: birthDate, sex: sex, profileType: .CHILD, photoPath: storedPhoto, createdAt: now, updatedAt: now)
+        do {
+            try await backend.insert("profile", profile.toDto())
+        } catch {
+            if let storedPhoto, photoPath.map(PhotoStore.isLocal) == true {
+                try? await photos.deleteProfile(path: storedPhoto)
+            }
+            throw error
+        }
         prefs.setSelectedProfile(profile.id)
         backend.bus.bump(.profile, .caregiver, .family)
         return profile
@@ -130,10 +143,30 @@ public struct FamilyRepository: Sendable {
 
     @discardableResult
     public func updateChild(_ profile: ProfileEntity) async throws -> ProfileEntity {
-        let fresh = try await backend.versionedUpdate("profile", profile.toDto()).toEntity()
-        prefs.setSelectedProfile(profile.id)
-        backend.bus.bump(.profile)
-        return fresh
+        let previous = try await get(profileId: profile.id)?.photoPath
+        var row = profile
+        let incoming = row.photoPath
+        row.photoPath = try await storedProfilePhoto(incoming, familyId: row.familyId, profileId: row.id)
+        let uploaded = (incoming.map(PhotoStore.isLocal) ?? false) ? row.photoPath : nil
+        do {
+            let fresh = try await backend.versionedUpdate("profile", row.toDto()).toEntity()
+            if let previous, previous != fresh.photoPath {
+                try? await photos.deleteProfile(path: previous)
+            }
+            prefs.setSelectedProfile(profile.id)
+            backend.bus.bump(.profile)
+            return fresh
+        } catch {
+            if let uploaded { try? await photos.deleteProfile(path: uploaded) }
+            throw error
+        }
+    }
+
+    /// Uploads a staged JPEG. A remote path or nil is stored as given.
+    private func storedProfilePhoto(_ path: String?, familyId: String, profileId: String) async throws -> String? {
+        guard let path else { return nil }
+        guard PhotoStore.isLocal(path) else { return path }
+        return try await photos.uploadProfile(localPath: path, familyId: familyId, profileId: profileId)
     }
 
     public func get(profileId: String) async throws -> ProfileEntity? {
