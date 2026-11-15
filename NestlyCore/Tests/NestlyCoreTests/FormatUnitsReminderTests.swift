@@ -272,6 +272,23 @@ final class DtoMappingTests: XCTestCase {
         XCTAssertTrue(object["note"] is NSNull)
         XCTAssertTrue(object["end_time"] is NSNull)
         XCTAssertEqual(object["version"] as? Int, 1)
+        // solids_resets_feed_schedule is NOT NULL. Non-solids omit it so Postgres can apply the default.
+        XCTAssertNil(object["solids_resets_feed_schedule"])
+    }
+
+    func testSolidsScheduleFlagIsEncodedAndDoesNotLeakOntoOtherTypes() throws {
+        let keep = ActivityEntity(
+            id: "a", familyId: "f", profileId: "p", type: .SOLIDS, startTime: 0, timeZone: "UTC",
+            solids: SolidsDetails(.SNACK, ["Banana"], resetsFeedSchedule: false), createdAt: 0, updatedAt: 0
+        ).toDto()
+        let object = try JSONSerialization.jsonObject(with: JSONEncoder().encode(keep)) as! [String: Any]
+        XCTAssertEqual(object["solids_resets_feed_schedule"] as? Bool, false)
+
+        let bottleJson = """
+        {"id":"a","family_id":"f","type":"BOTTLE_FEED","start_time":"1970-01-01T00:00:00.000Z","time_zone":"UTC","solids_resets_feed_schedule":true,"created_at":"1970-01-01T00:00:00.000Z","updated_at":"1970-01-01T00:00:00.000Z","version":1}
+        """.data(using: .utf8)!
+        let bottle = try JSONDecoder().decode(ActivityDto.self, from: bottleJson).toEntity()
+        XCTAssertNil(bottle.solids)
     }
 
     func testAppointmentRoundTripsThroughDto() throws {

@@ -486,7 +486,10 @@ public struct ActivityDto: Codable, Equatable, Sendable {
         try c.put(milestoneKey, .milestoneKey)
         try c.put(solidsMealType, .solidsMealType)
         try c.put(solidsFoods, .solidsFoods)
-        try c.put(solidsResetsFeedSchedule, .solidsResetsFeedSchedule)
+        // NOT NULL. An explicit null fails the insert (23502); omit it so the column default applies.
+        if let solidsResetsFeedSchedule {
+            try c.encode(solidsResetsFeedSchedule, forKey: .solidsResetsFeedSchedule)
+        }
         try c.put(routineName, .routineName)
         try c.put(babyFirstTitle, .babyFirstTitle)
         try c.put(medicalTemperatureC, .medicalTemperatureC)
@@ -506,7 +509,8 @@ public struct ActivityDto: Codable, Equatable, Sendable {
         let hasBottle = bottleMilkType != nil || bottleTotalMl != nil || bottleBreastMilkMl != nil || bottleFormulaMl != nil || bottleFormulaName != nil
         let hasBreast = breastLeftDurationSec != nil || breastRightDurationSec != nil
         let hasGrowth = growthWeightKg != nil || growthHeightCm != nil || growthHeadCm != nil
-        let hasSolids = type == .SOLIDS || solidsMealType != nil || solidsFoods != nil || solidsResetsFeedSchedule != nil
+        // The schedule flag is NOT NULL on every row, so it must not by itself mark a bottle or sleep as solids.
+        let hasSolids = type == .SOLIDS || solidsMealType != nil || solidsFoods != nil
         let hasMedical = medicalTemperatureC != nil || medicalMedicationName != nil || medicalDose != nil
         return ActivityEntity(
             id: id,
