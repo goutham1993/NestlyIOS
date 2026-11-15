@@ -39,6 +39,18 @@ public struct FamilyRepository: Sendable {
         return try dtos.map { try $0.toEntity() }
     }
 
+    /// Names keyed by id, including caregivers who have been removed, so a past entry can still say who logged it.
+    public func caregiverNames(ids: [String]) async throws -> [String: String] {
+        let unique = Array(Set(ids))
+        guard !unique.isEmpty else { return [:] }
+        let dtos: [CaregiverDto] = try await backend.from("caregiver").select().in("id", values: unique).execute().value
+        var names: [String: String] = [:]
+        for dto in dtos {
+            if let name = dto.name.trimmedNilIfEmpty { names[dto.id] = name }
+        }
+        return names
+    }
+
     /// Stored selection if still present, else the first profile.
     public func selectedProfile(in profiles: [ProfileEntity]) -> ProfileEntity? {
         profiles.first { $0.id == prefs.selectedProfileId } ?? profiles.first

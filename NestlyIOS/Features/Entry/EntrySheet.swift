@@ -11,6 +11,8 @@ struct EntrySheet: View {
     @State private var c: EntryController
     @State private var confirmDelete = false
     @State private var confirmDiscard = false
+    /// Names for caregivers no longer in the family, keyed by id.
+    @State private var removedCaregiverNames: [String: String] = [:]
 
     init(request: EntryRequest) {
         _c = State(initialValue: EntryController(request: request, repos: .shared))
@@ -30,6 +32,11 @@ struct EntrySheet: View {
                         }
                         PhotoSection(path: $c.draft.photoPath)
                         if c.isEditing {
+                            if let enteredByName {
+                                Section {
+                                    LabeledContent("Entry added by", value: enteredByName)
+                                }
+                            }
                             Section {
                                 Button(role: .destructive) {
                                     Haptics.warning()
@@ -71,6 +78,7 @@ struct EntrySheet: View {
         }
         .presentationCornerRadius(Radius.l)
         .task { await c.load(profile: family.selectedProfile) }
+        .task(id: enteredByLookupID) { await loadEnteredByNames() }
         .onReceive(NotificationCenter.default.publisher(for: ActiveTimerStore.didChange)) { _ in c.refreshTimers() }
         .confirmationDialog("Delete this entry?", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Delete", role: .destructive) {
@@ -99,6 +107,34 @@ struct EntrySheet: View {
         } message: {
             Text(defaultPromptMessage)
         }
+    }
+
+    /// Restarts the name lookup when the entry or the family caregiver list changes.
+    private var enteredByLookupID: String {
+        c.enteredByIds.joined(separator: ",") + "|" + family.caregivers.map(\.id).sorted().joined(separator: ",")
+    }
+
+    /// Who logged this entry, once every caregiver id has a name.
+    private var enteredByName: String? {
+        guard c.isEditing, c.loaded else { return nil }
+        let ids = c.enteredByIds
+        guard !ids.isEmpty else { return nil }
+        let names = ids.compactMap { id -> String? in
+            family.caregivers.first { $0.id == id }?.name.trimmedNilIfEmpty ?? removedCaregiverNames[id]
+        }
+        guard names.count == ids.count else { return nil }
+        switch names.count {
+        case 1: return names[0]
+        case 2: return "\(names[0]) and \(names[1])"
+        default: return names.dropLast().joined(separator: ", ") + ", and \(names[names.count - 1])"
+        }
+    }
+
+    private func loadEnteredByNames() async {
+        let missing = c.enteredByIds.filter { id in !family.caregivers.contains { $0.id == id } && removedCaregiverNames[id] == nil }
+        guard !missing.isEmpty else { return }
+        guard let names = try? await app.repos.family.caregiverNames(ids: missing) else { return }
+        removedCaregiverNames.merge(names) { _, new in new }
     }
 
     private var defaultPromptTitle: String { c.defaultBottleMl == nil ? "Set as default amount?" : "Update default amount?" }

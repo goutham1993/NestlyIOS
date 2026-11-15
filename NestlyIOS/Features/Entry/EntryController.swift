@@ -28,6 +28,15 @@ final class EntryController {
     var isEditing: Bool { if case .edit = request { true } else { false } }
     var usesTimers: Bool { !isEditing && kind.isTimed }
 
+    /// Caregivers who originally entered this activity, oldest first. Empty until an existing entry is loaded.
+    var enteredByIds: [String] {
+        var seen = Set<String>()
+        return existing
+            .sorted { $0.createdAt < $1.createdAt }
+            .compactMap(\.createdById)
+            .filter { seen.insert($0).inserted }
+    }
+
     var timerGroup: TimerGroup? {
         switch kind {
         case .BREASTFEED, .COMBO: .BREASTFEED
